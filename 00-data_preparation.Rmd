@@ -1,11 +1,11 @@
-# Staged data {#staged-data}
+# Data preparation {#data-preparation}
 
 The staged panel contains 360 geographically dispersed Microflora Danica
 samples: 45 from each of eight habitat classes. It uses the same locked sample
 and representative genome selections as the
 [gifter case study](https://github.com/alberdilab/gifter/tree/f04f7de0691c29874f7fbe17b915990b832e2a4d/manuscript/analysis/r10-mfd).
 
-## Files {#staged-data-files}
+## Input data
 
 | File | Contents |
 | --- | --- |
@@ -13,6 +13,62 @@ and representative genome selections as the
 | [`data/sample_metadata.tsv`](https://github.com/alberdilab/hilldiv3-ms/blob/main/data/sample_metadata.tsv) | Sample metadata in abundance-column order, including habitat class, ontology, location, date, and selection audit. |
 | [`data/representative_metadata.tsv`](https://github.com/alberdilab/hilldiv3-ms/blob/main/data/representative_metadata.tsv) | Metadata for the 95% ANI species representatives in abundance-row order. |
 | [`data/representative_tree.nwk`](https://github.com/alberdilab/hilldiv3-ms/blob/main/data/representative_tree.nwk) | Source tree pruned to the 5,518 representative `genome_id` tips, retaining source branch lengths. |
+
+## Load the staged panel
+
+The committed tables and tree are the input to the forthcoming analyses. Load
+them from the repository root:
+
+```{r load_staged_data, message=FALSE}
+sample_metadata <- data.table::fread(
+  "data/sample_metadata.tsv", data.table = FALSE
+)
+genome_metadata <- data.table::fread(
+  "data/representative_metadata.tsv", data.table = FALSE
+)
+genome_abundance <- data.table::fread(
+  cmd = "xz -dc data/mag_relative_abundance.tsv.xz",
+  data.table = FALSE, check.names = FALSE
+)
+genome_tree <- ape::read.tree("data/representative_tree.nwk")
+```
+
+The selected panel has 45 samples in each habitat class:
+
+```{r summarize_habitats}
+habitats <- table(sample_metadata$habitat_label)
+knitr::kable(
+  data.frame(habitat = names(habitats), samples = as.integer(habitats)),
+  col.names = c("Habitat", "Samples")
+)
+```
+
+## Check the staged objects
+
+The abundance rows and columns must align with the metadata, and the tree
+must contain exactly the representative genomes:
+
+```{r check_staged_data}
+stopifnot(
+  nrow(sample_metadata) == 360L,
+  nrow(genome_metadata) == 5518L,
+  nrow(genome_abundance) == 5518L,
+  ncol(genome_abundance) == 361L,
+  length(habitats) == 8L,
+  all(habitats == 45L),
+  identical(genome_abundance$genome_id, genome_metadata$genome_id),
+  identical(names(genome_abundance)[-1L], sample_metadata$sample_id),
+  setequal(genome_tree$tip.label, genome_metadata$genome_id)
+)
+profile_totals <- colSums(as.matrix(genome_abundance[-1L]))
+stopifnot(all(is.finite(profile_totals)),
+          all(profile_totals > 0.99 & profile_totals < 1.01))
+cat(sprintf(
+  "%d samples, %d representative genomes, %d tree tips; profile sums %.6f–%.6f.\n",
+  nrow(sample_metadata), nrow(genome_metadata), ape::Ntip(genome_tree),
+  min(profile_totals), max(profile_totals)
+))
+```
 
 The abundance values are **proportions of the published MFD MAG profile**, not
 genome or read counts. The preparation script keeps strain (`t__`) rows from
@@ -23,7 +79,7 @@ The representative abundance therefore stands for its cluster; it does not
 imply that all members have identical gene content. These values describe the
 MFD MAG profile, not the fraction of all DNA in each sample.
 
-## Sources {#staged-data-sources}
+## Sources
 
 The primary study is [Singleton and colleagues, *The Microflora Danica atlas of
 Danish environmental microbiomes*](https://doi.org/10.1038/s41586-025-09794-2).
@@ -39,7 +95,7 @@ The source tree is
 from the MFD companion repository at commit `957591d`. Tips outside the
 representative panel were removed.
 
-## Rebuild and verify {#staged-data-verification}
+## Rebuild and verify
 
 The committed files are ready to use. To rebuild them from the pinned public
 sources, install R packages `data.table` and `ape`, then run:

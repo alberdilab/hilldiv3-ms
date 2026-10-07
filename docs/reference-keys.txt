@@ -1,0 +1,12 @@
+introduction
+prepare-the-r-environment
+environment
+libraries
+analysis-steps
+step-0---data-preparation
+data-preparation
+input-data
+load-the-staged-panel
+check-the-staged-objects
+sources
+rebuild-and-verify

@@ -7,26 +7,25 @@ Functional annotations and hilldiv3 analyses will be added in later stages.
 
 ## Bookdown publication
 
-This repository follows the [alberdilabr](https://github.com/alberdilab/alberdilabr)
-bookdown layout. `index.Rmd` is the landing page and defines the site output;
-the numbered `.Rmd` files in the repository root are chapters, ordered by
-`_bookdown.yml`. The current chapter documents the staged data. As analyses
-are completed, add their chapters to `_bookdown.yml`. Shared setup, styling,
-references, and generated figures live in `alberdilabr/`.
+This repository follows the manuscript webbook format used by
+[`invasion_hologenomics`](https://github.com/alberdilab/invasion_hologenomics)
+and [`calotriton_metagenomics`](https://github.com/alberdilab/calotriton_metagenomics):
+numbered R Markdown chapters in the repository root, the AlberdiLab GitBook
+style in `style.css` and `_output.yml`, and rendered pages committed in `docs/`.
+The current `00-data_preparation.Rmd` chapter covers the staged data; add
+numbered chapters for subsequent analyses.
 
-R package versions are pinned in `renv.lock`. After cloning, run
-`renv::restore()` to install them. To build the site locally, run:
+Install R packages `bookdown`, `rmarkdown`, `knitr`, `data.table`, and `ape`.
+To render the webbook from the repository root, run:
 
-```sh
-Rscript -e 'bookdown::render_book("index.Rmd")'
+```r
+bookdown::render_book(input = ".", output_format = "bookdown::gitbook",
+                      output_dir = "docs")
 ```
 
-The site is generated in ignored `_site/`; HTML is not committed. Pushing to
-`main` runs `.github/workflows/publish.yml`, which builds the site and deploys
-it to GitHub Pages. Pages is configured to use GitHub Actions, and the
-publication is available at <https://alberdilab.github.io/hilldiv3-ms/> after
-the first successful deployment. When adding analysis dependencies, run
-`renv::snapshot()` and commit the updated lockfile.
+Commit the updated `docs/` output with the R Markdown sources. GitHub Pages
+serves `docs/` from `main` at
+<https://alberdilab.github.io/hilldiv3-ms/>.
 
 ## Staged files
 

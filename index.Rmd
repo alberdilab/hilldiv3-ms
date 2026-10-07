@@ -1,53 +1,60 @@
 ---
-title: "hilldiv3 manuscript: Microflora Danica data"
+title: "AlberdiLab | hilldiv3 manuscript"
+subtitle: "Microflora Danica worked example: staged data"
 author: "Alberdi Lab"
+date: "Last update: `r Sys.Date()`"
 site: bookdown::bookdown_site
 documentclass: book
-bibliography: [alberdilabr/references.bib]
-biblio-style: apalike
+bibliography: [book.bib, packages.bib]
+url: https://alberdilab.github.io/hilldiv3-ms/
+description: |
+  Data and analysis code for the Microflora Danica worked example in the hilldiv3 manuscript.
 link-citations: yes
-description: "Staged Microflora Danica community data for the hilldiv3 manuscript."
-output:
-  bookdown::bs4_book:
-    theme:
-      primary: "#0068D9"
-    css: alberdilabr/style.css
-    split_bib: false
-    repo:
-      base: https://github.com/alberdilab/hilldiv3-ms
-      branch: main
+github-repo: alberdilab/hilldiv3-ms
 ---
 
-# Welcome {#welcome .unnumbered}
-
-```{r setup, include=FALSE}
+```{r knitr_opts, echo=FALSE}
 knitr::opts_chunk$set(
-  echo = TRUE,
-  message = FALSE,
-  warning = FALSE,
-  fig.align = "center",
-  fig.path = "alberdilabr/figures/"
+  class.source = "script-source",
+  class.output = "script-output",
+  comment = NA
 )
-source("alberdilabr/setup.R")
 ```
 
-This publication records the **Microflora Danica data panel** staged for a
-worked example in the hilldiv3 manuscript. The current release contains the
-sample and genome metadata, a representative MAG abundance matrix, and a
-phylogenetic tree. The analysis chapters will be added as that work is run.
+# Introduction
 
-The [staged data](#staged-data) chapter describes the panel, its provenance,
-and how to verify it. The source files and preparation scripts are in the
-[GitHub repository](https://github.com/alberdilab/hilldiv3-ms).
+This webbook contains the data and reproducible code for the Microflora Danica
+worked example in the hilldiv3 manuscript. The staged release contains sample
+and genome metadata, a representative MAG abundance matrix, and a phylogenetic
+tree. Analysis chapters will be added as the remaining work is run.
 
-## Rebuild this site {.unnumbered}
+## Prepare the R environment
 
-After cloning, restore the R package versions in `renv.lock` with
-`renv::restore()`. Then, from the repository root, run:
+### Environment
 
-```r
-bookdown::render_book("index.Rmd")
+Clone the [GitHub repository](https://github.com/alberdilab/hilldiv3-ms) and
+open `hilldiv3-ms.Rproj`, or create a new RStudio project from:
+
+```text
+https://github.com/alberdilab/hilldiv3-ms.git
 ```
 
-The rendered site is written to `_site/`. The GitHub Actions workflow builds
-the site from source and publishes it to GitHub Pages.
+### Libraries
+
+The current data preparation chapter uses these R packages:
+
+```{r load_libraries, message=FALSE}
+library(data.table)
+library(ape)
+library(knitr)
+```
+
+## Analysis steps
+
+### Step 0 - Data preparation
+
+The [data preparation](#data-preparation) chapter describes the committed
+Microflora Danica panel, loads it, and checks its sample, genome, abundance,
+and tree alignment. The source-download and preparation scripts are in
+`scripts/`. Functional annotations and hilldiv3 analyses will follow in later
+chapters.

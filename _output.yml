@@ -1,0 +1,13 @@
+bookdown::gitbook:
+  self_contained: true
+  css: style.css
+  config:
+    toc:
+      before: |
+        <li class="toc-logo"><a href="index.html"><img src="alberdilab_minilogo.png" alt="AlberdiLab logo"></a></li>
+        <li align="center"><b>hilldiv3 manuscript</b></li>
+      after: |
+        <li><a href="https://www.alberdilab.dk" target="blank"><b>www.alberdilab.dk</b></a></li>
+        <li><a href="https://www.earthhologenome.org" target="blank"><b>www.earthhologenome.org</b></a></li>
+        <li><a href="https://www.holo-omics.science" target="blank"><b>www.holo-omics.science</b></a></li>
+  fig_width: 8

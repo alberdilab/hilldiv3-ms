@@ -3,20 +3,17 @@
 .RData
 .Rproj.user
 .Ruserdata
-.Renviron
+.RDataTmp
 
-# bookdown output and intermediates
-_site/
+# bookdown intermediates; docs/ is the published, tracked output
 _book/
 _bookdown_files/
 *_files/
 *_cache/
 *.utf8.md
 *.knit.md
-hilldiv3-ms.Rmd
-hilldiv3-ms.md
-alberdilabr/figures/*
-!alberdilabr/figures/README.md
+_main.Rmd
+_main.md
 
 sources/*
 !sources/.gitkeep

@@ -1,6 +1,5 @@
-book_filename: "hilldiv3-ms"
 delete_merged_file: true
-output_dir: "_site"
-rmd_files:
-  - "index.Rmd"
-  - "01-staged-data.Rmd"
+output_dir: docs
+language:
+  ui:
+    chapter_name: "Chapter "
