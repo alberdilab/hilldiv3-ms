@@ -16,7 +16,7 @@ and representative genome selections as the
 
 ## Load the staged panel
 
-The committed tables and tree are the input to the forthcoming analyses. Load
+The committed tables and tree are the inputs to the following chapters. Load
 them from the repository root:
 
 ```{r load_staged_data, message=FALSE}

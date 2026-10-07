@@ -1,0 +1,163 @@
+# Initial diversity analyses {#diversity}
+
+We use [hilldiv3](https://alberdilab.github.io/hilldiv3/) to describe diversity
+in the selected panel. Neutral Hill numbers use representative relative
+abundances; phylogenetic Hill numbers also use the pruned representative tree.
+We evaluate diversity orders $q=0$ (all detected units receive full weight),
+$q=1$ (abundance-weighted diversity), and $q=2$ (common units weighted more
+strongly). For neutral diversity, $q=0$ is the count of detected
+representatives. Functional diversity awaits a matched trait or gene-function
+table.
+
+```{r diversity_setup, include=FALSE}
+stopifnot(requireNamespace("hilldiv3", quietly = TRUE),
+          identical(rownames(overview_abundance), genome_metadata$genome_id),
+          identical(colnames(overview_abundance), sample_metadata$sample_id))
+
+# The installed 3.0.0 release computes one type per hilldiv() call. Separate
+# calls also make the neutral and phylogenetic inputs explicit in newer builds.
+plain_hill_result <- function(x) {
+  class(x) <- "data.frame"
+  x
+}
+
+alpha_neutral <- plain_hill_result(hilldiv3::hilldiv(
+  overview_abundance, q = c(0, 1, 2), type = "neutral"
+))
+alpha_phylogenetic <- plain_hill_result(hilldiv3::hilldiv(
+  overview_abundance, q = c(0, 1, 2), tree = genome_tree,
+  type = "phylogenetic", reference = "pool"
+))
+alpha_neutral$type <- "Neutral"
+alpha_phylogenetic$type <- "Phylogenetic"
+alpha_diversity <- rbind(alpha_neutral, alpha_phylogenetic)
+alpha_diversity$habitat <- sample_metadata$habitat_label[
+  match(alpha_diversity$sample, sample_metadata$sample_id)
+]
+stopifnot(!anyNA(alpha_diversity$habitat),
+          all(is.finite(alpha_diversity$value)),
+          all(alpha_diversity$value > 0))
+alpha_diversity$habitat <- factor(alpha_diversity$habitat,
+                                  levels = rev(habitat_levels))
+alpha_diversity$type <- factor(alpha_diversity$type,
+                               levels = c("Neutral", "Phylogenetic"))
+alpha_diversity$order <- factor(alpha_diversity$q, levels = c(0, 1, 2),
+                                labels = c("q = 0", "q = 1", "q = 2"))
+```
+
+## Within-sample diversity
+
+```{r diversity_alpha_plot, fig.width=11, fig.height=7.5, fig.alt="Boxplots and sample points for neutral and phylogenetic Hill diversity at orders 0, 1, and 2 across eight habitats."}
+ggplot2::ggplot(alpha_diversity,
+                ggplot2::aes(x = value, y = habitat)) +
+  ggplot2::geom_boxplot(outlier.shape = NA, width = 0.55,
+                        fill = "#e6c7c7", colour = "#702626") +
+  ggplot2::geom_jitter(height = 0.13, width = 0, alpha = 0.28,
+                       size = 0.65, colour = "#702626") +
+  ggplot2::facet_wrap(ggplot2::vars(type, order), ncol = 3,
+                      scales = "free_x") +
+  ggplot2::labs(x = "Hill diversity", y = NULL) +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                 strip.text = ggplot2::element_text(face = "bold"))
+```
+
+*Hill numbers for 45 samples in each habitat class. Boxes show medians and
+interquartile ranges; points are individual samples. Horizontal scales differ
+by panel.*
+
+```{r diversity_alpha_table}
+q1 <- alpha_diversity[alpha_diversity$q == 1, ]
+q1_summary <- aggregate(
+  value ~ habitat + type, data = q1,
+  FUN = function(x) sprintf("%.1f [%.1f–%.1f]",
+                            median(x), unname(quantile(x, 0.25)),
+                            unname(quantile(x, 0.75)))
+)
+q1_neutral <- q1_summary[q1_summary$type == "Neutral", c("habitat", "value")]
+q1_phylo <- q1_summary[q1_summary$type == "Phylogenetic", c("habitat", "value")]
+names(q1_neutral)[2] <- "Neutral q = 1"
+names(q1_phylo)[2] <- "Phylogenetic q = 1"
+q1_table <- merge(q1_neutral, q1_phylo, by = "habitat", sort = FALSE)
+q1_table <- q1_table[match(habitat_levels, q1_table$habitat), ]
+names(q1_table)[1] <- "Habitat"
+rownames(q1_table) <- NULL
+knitr::kable(q1_table, row.names = FALSE)
+```
+
+*Median [interquartile range] of $q=1$ diversity by habitat.*
+
+```{r diversity_alpha_interpretation, echo=FALSE, results='asis'}
+neutral_medians <- tapply(q1$value[q1$type == "Neutral"],
+                          q1$habitat[q1$type == "Neutral"], median)
+cat(sprintf(
+  "At $q=1$, median neutral diversity ranges from %.1f in %s to %.1f in %s.\n\n",
+  min(neutral_medians), names(which.min(neutral_medians)),
+  max(neutral_medians), names(which.max(neutral_medians))
+))
+```
+
+The phylogenetic values use hilldiv3's common pooled reference tree depth, so
+samples are evaluated on the same scale. Their numerical values should be
+compared within the phylogenetic panels, rather than interpreted as counts of
+MAGs. Neutral $q=0$ is the number of representatives with a positive reported
+abundance; it is sensitive to very small values in the source profiles.
+
+## Partitioning across habitats
+
+The next calculation partitions diversity across individual samples, habitat
+classes, and the complete panel. At each step, hilldiv3 reports a beta factor:
+the effective number of distinct units added at that scale. The two beta
+factors multiply to give the total gamma-to-alpha ratio. Each sample has equal
+weight; the design has 45 samples in every habitat class.
+
+```{r diversity_partition}
+habitat_metadata <- data.frame(
+  habitat_class = sample_metadata$habitat_class,
+  row.names = sample_metadata$sample_id
+)
+partition_neutral <- plain_hill_result(hilldiv3::hillpart(
+  overview_abundance, q = c(0, 1, 2),
+  hierarchy = ~ habitat_class, metadata = habitat_metadata,
+  type = "neutral"
+))
+partition_phylogenetic <- plain_hill_result(hilldiv3::hillpart(
+  overview_abundance, q = c(0, 1, 2), tree = genome_tree,
+  hierarchy = ~ habitat_class, metadata = habitat_metadata,
+  type = "phylogenetic"
+))
+partition_neutral$type <- "Neutral"
+partition_phylogenetic$type <- "Phylogenetic"
+partition <- rbind(partition_neutral, partition_phylogenetic)
+stopifnot(all(is.finite(partition$diversity)),
+          all(is.finite(partition$beta[partition$scale != "sample"])))
+
+within <- partition[partition$scale == "habitat_class",
+                    c("type", "q", "beta")]
+between <- partition[partition$scale == "total",
+                     c("type", "q", "beta", "diversity")]
+names(within)[3] <- "Within habitats"
+names(between)[3:4] <- c("Between habitats", "Gamma diversity")
+partition_table <- merge(within, between, by = c("type", "q"), sort = FALSE)
+partition_table <- partition_table[order(match(partition_table$type,
+                                                c("Neutral", "Phylogenetic")),
+                                          partition_table$q), ]
+knitr::kable(partition_table, digits = 2)
+```
+
+*Hierarchical Hill-number partition. Beta factors describe sample-to-habitat
+and habitat-to-panel turnover; gamma is diversity in the full panel.*
+
+At $q=1$, neutral beta diversity is
+`r sprintf("%.2f", partition_table[["Within habitats"]][partition_table$type == "Neutral" & partition_table$q == 1])`
+from samples to habitats and
+`r sprintf("%.2f", partition_table[["Between habitats"]][partition_table$type == "Neutral" & partition_table$q == 1])`
+from habitats to the full panel. The corresponding phylogenetic factors are
+`r sprintf("%.2f", partition_table[["Within habitats"]][partition_table$type == "Phylogenetic" & partition_table$q == 1])`
+and
+`r sprintf("%.2f", partition_table[["Between habitats"]][partition_table$type == "Phylogenetic" & partition_table$q == 1])`.
+
+These are descriptive comparisons of a geographically selected panel. Habitat
+and collection year are not independently balanced, so these summaries do not
+by themselves establish habitat effects. Relative abundances also cannot
+support read-count rarefaction or sampling-depth uncertainty estimates.

@@ -1,6 +1,6 @@
 ---
 title: "AlberdiLab | hilldiv3 manuscript"
-subtitle: "Microflora Danica worked example: staged data"
+subtitle: "Microflora Danica worked example: data and diversity"
 author: "Alberdi Lab"
 date: "Last update: `r Sys.Date()`"
 site: bookdown::bookdown_site
@@ -24,9 +24,10 @@ knitr::opts_chunk$set(
 # Introduction
 
 This webbook contains the data and reproducible code for the Microflora Danica
-worked example in the hilldiv3 manuscript. The staged release contains sample
+worked example in the hilldiv3 manuscript. The selected panel contains sample
 and genome metadata, a representative MAG abundance matrix, and a phylogenetic
-tree. Analysis chapters will be added as the remaining work is run.
+tree. The chapters describe the panel and begin neutral and phylogenetic
+diversity analyses.
 
 ## Prepare the R environment
 
@@ -41,12 +42,15 @@ https://github.com/alberdilab/hilldiv3-ms.git
 
 ### Libraries
 
-The current data preparation chapter uses these R packages:
+The book uses these R packages:
 
 ```{r load_libraries, message=FALSE}
 library(data.table)
 library(ape)
 library(knitr)
+library(ggplot2)
+library(maps)
+library(hilldiv3)
 ```
 
 ## Analysis steps
@@ -56,5 +60,15 @@ library(knitr)
 The [data preparation](#data-preparation) chapter describes the committed
 Microflora Danica panel, loads it, and checks its sample, genome, abundance,
 and tree alignment. The source-download and preparation scripts are in
-`scripts/`. Functional annotations and hilldiv3 analyses will follow in later
-chapters.
+`scripts/`.
+
+### Step 1 - Data overview
+
+The [data overview](#data-overview) chapter summarizes sample coverage,
+sampling dates, geography, and representative genomes.
+
+### Step 2 - Initial diversity analyses
+
+The [diversity analyses](#diversity) chapter calculates neutral and
+phylogenetic Hill numbers at orders 0, 1, and 2, then partitions diversity
+within and between the eight habitat classes using `hilldiv3`.

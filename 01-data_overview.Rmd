@@ -1,0 +1,136 @@
+# Data overview {#data-overview}
+
+This chapter describes the selected Microflora Danica panel before diversity
+analyses. All summaries are computed from the committed files loaded in the
+[data preparation](#data-preparation) chapter.
+
+```{r overview_setup, include=FALSE}
+stopifnot(requireNamespace("ggplot2", quietly = TRUE),
+          requireNamespace("maps", quietly = TRUE))
+
+habitat_levels <- unique(sample_metadata$habitat_label)
+overview_samples <- sample_metadata
+overview_samples$habitat_label <- factor(
+  overview_samples$habitat_label, levels = habitat_levels
+)
+overview_samples$date <- as.Date(overview_samples$sampling_date)
+stopifnot(!anyNA(overview_samples$date),
+          all(is.finite(overview_samples$latitude)),
+          all(is.finite(overview_samples$longitude)))
+
+overview_abundance <- as.matrix(genome_abundance[-1L])
+storage.mode(overview_abundance) <- "double"
+rownames(overview_abundance) <- genome_abundance$genome_id
+detected_per_sample <- colSums(overview_abundance > 0)
+```
+
+## Panel at a glance
+
+```{r overview_numbers}
+overview_numbers <- data.frame(
+  Measure = c("Samples", "Habitat classes", "Representative MAGs / 95% ANI clusters",
+              "Phylogenetic tree tips", "Sample dates", "Distinct 10 km grid cells",
+              "Detected representatives per sample, median (range)",
+              "Zero entries in abundance matrix"),
+  Value = c(
+    nrow(overview_samples), length(habitat_levels), nrow(genome_metadata),
+    ape::Ntip(genome_tree),
+    paste(format(range(overview_samples$date), "%Y-%m-%d"), collapse = " to "),
+    length(unique(overview_samples$cell.10km)),
+    sprintf("%.0f (%d–%d)", median(detected_per_sample),
+            min(detected_per_sample), max(detected_per_sample)),
+    sprintf("%.1f%%", 100 * mean(overview_abundance == 0))
+  )
+)
+knitr::kable(overview_numbers)
+```
+
+The abundance matrix contains **relative abundances within the published MFD
+MAG profile**, not sequencing counts or the fraction of all DNA. A detected
+representative means a strictly positive value in that profile. This threshold
+includes very small reported values, so detected richness should be interpreted
+with that sensitivity in mind.
+
+## Geographic coverage
+
+The selection contains 45 samples per habitat class. The table shows the
+observed coordinate span and the number of occupied 10 km grid cells within
+each class; grid-cell counts need not sum to the panel total because classes
+can share cells.
+
+```{r overview_habitat_table}
+habitat_rows <- lapply(habitat_levels, function(h) {
+  d <- overview_samples[overview_samples$habitat_label == h, ]
+  data.frame(
+    Habitat = h,
+    Samples = nrow(d),
+    `10 km cells` = length(unique(d$cell.10km)),
+    `Latitude °N` = sprintf("%.2f–%.2f", min(d$latitude), max(d$latitude)),
+    `Longitude °E` = sprintf("%.2f–%.2f", min(d$longitude), max(d$longitude)),
+    check.names = FALSE
+  )
+})
+knitr::kable(do.call(rbind, habitat_rows))
+```
+
+```{r overview_map, fig.width=10, fig.height=7.5, fig.alt="Map of the 360 selected samples in Denmark, faceted by eight habitat classes."}
+denmark <- ggplot2::map_data("world", region = "Denmark")
+ggplot2::ggplot() +
+  ggplot2::geom_polygon(
+    data = denmark,
+    ggplot2::aes(x = long, y = lat, group = group),
+    fill = "#f0eeeb", colour = "#a9aaa8", linewidth = 0.25
+  ) +
+  ggplot2::geom_point(
+    data = overview_samples,
+    ggplot2::aes(x = longitude, y = latitude),
+    colour = "#a52929", alpha = 0.72, size = 1.2
+  ) +
+  ggplot2::facet_wrap(~ habitat_label, ncol = 4) +
+  ggplot2::coord_quickmap(xlim = c(8, 15.5), ylim = c(54.4, 58.0), expand = FALSE) +
+  ggplot2::labs(x = "Longitude (°E)", y = "Latitude (°N)") +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                 strip.text = ggplot2::element_text(size = 9))
+```
+
+*Sample locations by habitat class. The Denmark outline includes Bornholm.*
+
+The map shows sample coordinates, including freshwater, saltwater, and
+wastewater sites. It does not encode sampling effort in the source atlas; the
+45-per-class selection was deliberately balanced and geographically dispersed.
+
+## Sampling time
+
+```{r overview_years, fig.width=9, fig.height=3.4, fig.alt="Bar chart of selected sample counts by sampling year, 2014 to 2023."}
+overview_samples$year <- format(overview_samples$date, "%Y")
+ggplot2::ggplot(overview_samples, ggplot2::aes(x = year)) +
+  ggplot2::geom_bar(fill = "#a52929", width = 0.75) +
+  ggplot2::labs(x = "Sampling year", y = "Samples") +
+  ggplot2::theme_minimal(base_size = 11)
+```
+
+*Sampling years of the selected panel.*
+
+## Representative genomes
+
+```{r overview_genomes}
+domain_counts <- as.data.frame(table(sub("^d__", "", genome_metadata$domain)))
+names(domain_counts) <- c("Domain", "Representatives")
+knitr::kable(domain_counts)
+
+phylum <- sub("^p__", "", genome_metadata$phylum)
+phylum[is.na(phylum) | phylum == ""] <- "Unclassified"
+phylum_counts <- sort(table(phylum), decreasing = TRUE)
+top_phyla <- data.frame(
+  Phylum = names(head(phylum_counts, 10)),
+  Representatives = as.integer(head(phylum_counts, 10))
+)
+knitr::kable(top_phyla)
+```
+
+There are `r sum(genome_metadata$mag_status == "HQ")` high-quality and
+`r sum(genome_metadata$mag_status == "MQ")` medium-quality representatives
+under the source metadata's classifications. Each representative stands for a
+95% ANI cluster in the abundance table; the table above counts representatives,
+not all MAGs assigned to those clusters.
