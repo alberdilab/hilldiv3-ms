@@ -5,6 +5,29 @@ the **hilldiv3** manuscript. It contains a genome by sample abundance table,
 sample and genome metadata, and a phylogenetic tree on the same 5,518 genomes.
 Functional annotations and hilldiv3 analyses will be added in later stages.
 
+## Bookdown publication
+
+This repository follows the [alberdilabr](https://github.com/alberdilab/alberdilabr)
+bookdown layout. `index.Rmd` is the landing page and defines the site output;
+the numbered `.Rmd` files in the repository root are chapters, ordered by
+`_bookdown.yml`. The current chapter documents the staged data. As analyses
+are completed, add their chapters to `_bookdown.yml`. Shared setup, styling,
+references, and generated figures live in `alberdilabr/`.
+
+R package versions are pinned in `renv.lock`. After cloning, run
+`renv::restore()` to install them. To build the site locally, run:
+
+```sh
+Rscript -e 'bookdown::render_book("index.Rmd")'
+```
+
+The site is generated in ignored `_site/`; HTML is not committed. Pushing to
+`main` runs `.github/workflows/publish.yml`, which builds the site and deploys
+it to GitHub Pages. Pages is configured to use GitHub Actions, and the
+publication is available at <https://alberdilab.github.io/hilldiv3-ms/> after
+the first successful deployment. When adding analysis dependencies, run
+`renv::snapshot()` and commit the updated lockfile.
+
 ## Staged files
 
 | File | Contents |

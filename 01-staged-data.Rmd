@@ -1,0 +1,66 @@
+# Staged data {#staged-data}
+
+The staged panel contains 360 geographically dispersed Microflora Danica
+samples: 45 from each of eight habitat classes. It uses the same locked sample
+and representative genome selections as the
+[gifter case study](https://github.com/alberdilab/gifter/tree/f04f7de0691c29874f7fbe17b915990b832e2a4d/manuscript/analysis/r10-mfd).
+
+## Files {#staged-data-files}
+
+| File | Contents |
+| --- | --- |
+| [`data/mag_relative_abundance.tsv.xz`](https://github.com/alberdilab/hilldiv3-ms/blob/main/data/mag_relative_abundance.tsv.xz) | Relative abundances for 5,518 representative MAGs (rows) and 360 samples (columns). The first column is `genome_id`. |
+| [`data/sample_metadata.tsv`](https://github.com/alberdilab/hilldiv3-ms/blob/main/data/sample_metadata.tsv) | Sample metadata in abundance-column order, including habitat class, ontology, location, date, and selection audit. |
+| [`data/representative_metadata.tsv`](https://github.com/alberdilab/hilldiv3-ms/blob/main/data/representative_metadata.tsv) | Metadata for the 95% ANI species representatives in abundance-row order. |
+| [`data/representative_tree.nwk`](https://github.com/alberdilab/hilldiv3-ms/blob/main/data/representative_tree.nwk) | Source tree pruned to the 5,518 representative `genome_id` tips, retaining source branch lengths. |
+
+The abundance values are **proportions of the published MFD MAG profile**, not
+genome or read counts. The preparation script keeps strain (`t__`) rows from
+the Sylph profiles, maps MAGs to their published `secondary_cluster`, sums
+each 95% ANI cluster, and divides percentages by 100. It assigns each cluster
+profile to the deposited representative MAG. It does not renormalize profiles.
+The representative abundance therefore stands for its cluster; it does not
+imply that all members have identical gene content. These values describe the
+MFD MAG profile, not the fraction of all DNA in each sample.
+
+## Sources {#staged-data-sources}
+
+The primary study is [Singleton and colleagues, *The Microflora Danica atlas of
+Danish environmental microbiomes*](https://doi.org/10.1038/s41586-025-09794-2).
+The [Microflora Danica data deposit](https://doi.org/10.5281/zenodo.17162544)
+provides `Nitrifiers.tar.gz`, including the published MAG metadata and Sylph
+abundance table. Please cite both the study and deposit when using these data,
+and consult the deposit for its reuse terms.
+
+The sample and representative tables are copies of the locked panels at
+[`gifter` commit `f04f7de`](https://github.com/alberdilab/gifter/tree/f04f7de0691c29874f7fbe17b915990b832e2a4d/manuscript/analysis/r10-mfd).
+The source tree is
+[`gtdb-shallow.tree`](https://github.com/cmc-aau/mfd_sr_mags/blob/957591d4104462ec6e52ab58d85a69798057e582/analysis/datasets/gtdb-shallow.tree)
+from the MFD companion repository at commit `957591d`. Tips outside the
+representative panel were removed.
+
+## Rebuild and verify {#staged-data-verification}
+
+The committed files are ready to use. To rebuild them from the pinned public
+sources, install R packages `data.table` and `ape`, then run:
+
+```sh
+bash scripts/fetch-source-data.sh
+Rscript scripts/prepare-data.R
+Rscript scripts/check-data.R
+```
+
+The source archive is about 228 MB. Downloads remain in the ignored
+`sources/` directory. The preparation script also accepts paths to existing
+MAG metadata, abundance TSV.xz, and source tree files, in that order.
+
+To verify the committed snapshot byte for byte:
+
+```sh
+shasum -a 256 -c data/SHA256SUMS
+```
+
+The checker verifies sample and genome IDs, 45 samples per habitat, table
+ordering, finite nonnegative abundances, near-unit profile sums, and exact
+tree-tip identity. In this snapshot, sample profile totals range from
+0.999988 to 1.000015.

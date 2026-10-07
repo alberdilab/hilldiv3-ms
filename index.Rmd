@@ -1,0 +1,53 @@
+---
+title: "hilldiv3 manuscript: Microflora Danica data"
+author: "Alberdi Lab"
+site: bookdown::bookdown_site
+documentclass: book
+bibliography: [alberdilabr/references.bib]
+biblio-style: apalike
+link-citations: yes
+description: "Staged Microflora Danica community data for the hilldiv3 manuscript."
+output:
+  bookdown::bs4_book:
+    theme:
+      primary: "#0068D9"
+    css: alberdilabr/style.css
+    split_bib: false
+    repo:
+      base: https://github.com/alberdilab/hilldiv3-ms
+      branch: main
+---
+
+# Welcome {#welcome .unnumbered}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center",
+  fig.path = "alberdilabr/figures/"
+)
+source("alberdilabr/setup.R")
+```
+
+This publication records the **Microflora Danica data panel** staged for a
+worked example in the hilldiv3 manuscript. The current release contains the
+sample and genome metadata, a representative MAG abundance matrix, and a
+phylogenetic tree. The analysis chapters will be added as that work is run.
+
+The [staged data](#staged-data) chapter describes the panel, its provenance,
+and how to verify it. The source files and preparation scripts are in the
+[GitHub repository](https://github.com/alberdilab/hilldiv3-ms).
+
+## Rebuild this site {.unnumbered}
+
+After cloning, restore the R package versions in `renv.lock` with
+`renv::restore()`. Then, from the repository root, run:
+
+```r
+bookdown::render_book("index.Rmd")
+```
+
+The rendered site is written to `_site/`. The GitHub Actions workflow builds
+the site from source and publishes it to GitHub Pages.

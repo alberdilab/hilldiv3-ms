@@ -1,5 +1,22 @@
 .DS_Store
 .Rhistory
 .RData
+.Rproj.user
+.Ruserdata
+.Renviron
+
+# bookdown output and intermediates
+_site/
+_book/
+_bookdown_files/
+*_files/
+*_cache/
+*.utf8.md
+*.knit.md
+hilldiv3-ms.Rmd
+hilldiv3-ms.md
+alberdilabr/figures/*
+!alberdilabr/figures/README.md
+
 sources/*
 !sources/.gitkeep

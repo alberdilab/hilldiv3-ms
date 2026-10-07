@@ -1,0 +1,22 @@
+/* Custom styling for the hilldiv3 manuscript publication. */
+:root {
+  --publication-accent: #0068D9;
+}
+
+.figure .caption,
+p.caption {
+  font-size: 0.9rem;
+  color: #4a4a4a;
+  margin-top: 0.5rem;
+}
+
+blockquote {
+  border-left: 4px solid var(--publication-accent);
+  padding-left: 1rem;
+  color: #333;
+}
+
+.table-wrapper,
+pre {
+  overflow-x: auto;
+}
