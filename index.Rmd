@@ -78,4 +78,4 @@ within and between the eight habitat classes using `hilldiv3`.
 The [pairwise beta diversity](#pairwise-beta) chapter compares every pair of
 samples with neutral and phylogenetic Hill-number C dissimilarity. It summarizes
 within- and between-habitat pairs and shows habitat heatmaps and sample-level
-ordinations.
+ordinations at $q=0$ and $q=1$.

@@ -177,14 +177,22 @@ branch structure despite little overlap in representative profiles.
 
 ## Sample-level ordination
 
-Principal coordinates analysis (PCoA) projects the $q=1$ dissimilarities into
-two dimensions. We apply a Cailliez correction because C dissimilarity need
-not be Euclidean. Axis percentages refer to the corrected distance matrix;
-the plot is a two-dimensional summary of the complete pairwise matrix.
+Principal coordinates analysis (PCoA) projects the $q=0$ and $q=1$
+dissimilarities into two dimensions. At $q=0$, neutral dissimilarity reflects
+overlap among detected representatives; phylogenetic dissimilarity also
+accounts for their shared tree branches. We apply a Cailliez correction
+because C dissimilarity need not be Euclidean. Axis percentages refer to the
+corrected distance matrix in each panel.
 
 ```{r pairwise_ordination_data, include=FALSE}
-ordination_rows <- lapply(c("Neutral", "Phylogenetic"), function(diversity_type) {
-  d <- q1_pairwise[q1_pairwise$type == diversity_type, ]
+ordination_grid <- expand.grid(
+  type = c("Neutral", "Phylogenetic"), q = c(0, 1),
+  KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
+)
+ordination_rows <- lapply(seq_len(nrow(ordination_grid)), function(i) {
+  diversity_type <- ordination_grid$type[i]
+  order <- ordination_grid$q[i]
+  d <- pairwise[pairwise$type == diversity_type & pairwise$q == order, ]
   first <- match(d$first, sample_ids)
   second <- match(d$second, sample_ids)
   stopifnot(nrow(d) == choose(length(sample_ids), 2L),
@@ -202,33 +210,37 @@ ordination_rows <- lapply(c("Neutral", "Phylogenetic"), function(diversity_type)
     sample_id = sample_ids,
     habitat = sample_metadata$habitat_label,
     PCoA1 = ord$points[, 1], PCoA2 = ord$points[, 2],
-    panel = sprintf("%s (axes: %.1f%%, %.1f%%)",
-                    diversity_type, variance[1], variance[2])
+    panel = sprintf("%s, q = %d (axes: %.1f%%, %.1f%%)",
+                    diversity_type, order, variance[1], variance[2])
   )
 })
 ordination <- do.call(rbind, ordination_rows)
 ordination$habitat <- factor(ordination$habitat, levels = habitat_levels)
-stopifnot(nrow(ordination) == 2L * length(sample_ids),
+ordination$panel <- factor(ordination$panel,
+                           levels = vapply(ordination_rows,
+                                           function(d) d$panel[1], ""))
+stopifnot(nrow(ordination) == 4L * length(sample_ids),
           all(is.finite(ordination$PCoA1)),
           all(is.finite(ordination$PCoA2)))
 ```
 
-```{r pairwise_ordination, fig.width=11, fig.height=5.5, fig.alt="Principal coordinates plots of order-one neutral and phylogenetic C dissimilarity among 360 samples, coloured by habitat."}
+```{r pairwise_ordination, fig.width=11, fig.height=9.5, fig.alt="Four principal coordinates plots of neutral and phylogenetic C dissimilarity at orders zero and one among 360 samples, coloured by habitat."}
 ggplot2::ggplot(ordination,
                 ggplot2::aes(x = PCoA1, y = PCoA2, colour = habitat)) +
-  ggplot2::geom_point(alpha = 0.75, size = 1.5) +
+  ggplot2::geom_point(alpha = 0.75, size = 1.3) +
   ggplot2::scale_colour_manual(values = grDevices::hcl.colors(
     length(habitat_levels), palette = "Dark 3")) +
-  ggplot2::facet_wrap(~ panel, scales = "free") +
+  ggplot2::facet_wrap(~ panel, ncol = 2, scales = "free") +
   ggplot2::labs(x = "PCoA 1", y = "PCoA 2", colour = "Habitat") +
   ggplot2::theme_minimal(base_size = 10) +
   ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
                  strip.text = ggplot2::element_text(face = "bold"))
 ```
 
-*Each point is one sample. Axis percentages are the shares of positive
-eigenvalues after the Cailliez correction; coordinates are comparable only
-within a panel.*
+*Each point is one sample. The top row shows richness-based $q=0$
+dissimilarity; the bottom row shows abundance-weighted $q=1$ dissimilarity.
+Axis percentages are the shares of positive eigenvalues after the Cailliez
+correction; coordinates are comparable only within a panel.*
 
 The pairwise patterns describe this selected panel. Pairs sharing samples are
 dependent, and habitat class is partly confounded with sampling year. We do
