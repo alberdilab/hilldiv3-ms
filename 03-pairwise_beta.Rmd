@@ -9,16 +9,24 @@ phylogenetic values at $q=0$, $q=1$, and $q=2$ using the same representative
 profiles and tree as above. Each type and order has
 `r choose(ncol(overview_abundance), 2)` unique sample pairs.
 
-```{r pairwise_setup, include=FALSE}
-# Explicit sample IDs make the pair-to-habitat mapping unambiguous.
-pair_neutral <- plain_hill_result(hilldiv3::hillpair(
+The two `hillpair()` calls return one row per sample pair and order. We request
+the long-format result so the sample IDs can be joined to their habitats.
+
+```{r pairwise_hillpair, message=FALSE, class.source='script-source hilldiv3-source'}
+pair_neutral <- hilldiv3::hillpair(
   overview_abundance, q = c(0, 1, 2), metric = "C",
   type = "neutral", out = "tibble"
-))
-pair_phylogenetic <- plain_hill_result(hilldiv3::hillpair(
+)
+pair_phylogenetic <- hilldiv3::hillpair(
   overview_abundance, q = c(0, 1, 2), metric = "C",
   tree = genome_tree, type = "phylogenetic", out = "tibble"
-))
+)
+```
+
+```{r pairwise_setup, include=FALSE}
+# Explicit sample IDs make the pair-to-habitat mapping unambiguous.
+pair_neutral <- plain_hill_result(pair_neutral)
+pair_phylogenetic <- plain_hill_result(pair_phylogenetic)
 pair_neutral$type <- "Neutral"
 pair_phylogenetic$type <- "Phylogenetic"
 pairwise <- rbind(pair_neutral, pair_phylogenetic)

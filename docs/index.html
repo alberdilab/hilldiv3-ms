@@ -2025,6 +2025,10 @@ height: auto !important;
 font-weight: bold !important;
 border-left: 3px solid #d65454 !important;
 }
+.hilldiv3-source {
+background-color: #fff1f1 !important;
+border-left: 5px solid #a52929 !important;
+}
 .script-output {
 background-color: #ffffff !important;
 }
@@ -2082,7 +2086,8 @@ color: #a52929;
 <li class="chapter" data-level="4" data-path="diversity.html"><a href="diversity.html"><i class="fa fa-check"></i><b>4</b> Initial diversity analyses</a>
 <ul>
 <li class="chapter" data-level="4.1" data-path="diversity.html"><a href="diversity.html#within-sample-diversity"><i class="fa fa-check"></i><b>4.1</b> Within-sample diversity</a></li>
-<li class="chapter" data-level="4.2" data-path="diversity.html"><a href="diversity.html#partitioning-across-habitats"><i class="fa fa-check"></i><b>4.2</b> Partitioning across habitats</a></li>
+<li class="chapter" data-level="4.2" data-path="diversity.html"><a href="diversity.html#diversity-profiles-across-orders"><i class="fa fa-check"></i><b>4.2</b> Diversity profiles across orders</a></li>
+<li class="chapter" data-level="4.3" data-path="diversity.html"><a href="diversity.html#partitioning-across-habitats"><i class="fa fa-check"></i><b>4.3</b> Partitioning across habitats</a></li>
 </ul></li>
 <li class="chapter" data-level="5" data-path="pairwise-beta.html"><a href="pairwise-beta.html"><i class="fa fa-check"></i><b>5</b> Pairwise beta diversity</a>
 <ul>
@@ -2161,15 +2166,17 @@ sampling dates, geography, and representative genomes.</p>
 <div id="step-2---initial-diversity-analyses" class="section level3 hasAnchor" number="1.2.3">
 <h3><span class="header-section-number">1.2.3</span> Step 2 - Initial diversity analyses<a href="index.html#step-2---initial-diversity-analyses" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>The <a href="diversity.html#diversity">diversity analyses</a> chapter calculates neutral and
-phylogenetic Hill numbers at orders 0, 1, and 2, then partitions diversity
-within and between the eight habitat classes using <code>hilldiv3</code>.</p>
+phylogenetic Hill numbers at orders 0, 1, and 2, traces diversity profiles
+across orders, then partitions diversity within and between the eight habitat
+classes. The <code>hilldiv3</code> calls appear in highlighted code blocks.</p>
 </div>
 <div id="step-3---pairwise-beta-diversity" class="section level3 hasAnchor" number="1.2.4">
 <h3><span class="header-section-number">1.2.4</span> Step 3 - Pairwise beta diversity<a href="index.html#step-3---pairwise-beta-diversity" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>The <a href="pairwise-beta.html#pairwise-beta">pairwise beta diversity</a> chapter compares every pair of
 samples with neutral and phylogenetic Hill-number C dissimilarity. It summarizes
 within- and between-habitat pairs and shows habitat heatmaps and sample-level
-ordinations at <span class="math inline">\(q=0\)</span> and <span class="math inline">\(q=1\)</span>.</p>
+ordinations at <span class="math inline">\(q=0\)</span> and <span class="math inline">\(q=1\)</span>. The <code>hillpair()</code> calls are shown before the
+code that formats their results.</p>
 
 </div>
 </div>

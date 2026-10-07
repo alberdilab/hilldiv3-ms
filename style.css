@@ -74,6 +74,11 @@ text-decoration: none;
   border-left: 3px solid #d65454 !important;
 }
 
+.hilldiv3-source {
+  background-color: #fff1f1 !important;
+  border-left: 5px solid #a52929 !important;
+}
+
 
 .script-output {
   background-color: #ffffff !important;

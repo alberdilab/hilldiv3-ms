@@ -14,20 +14,32 @@ stopifnot(requireNamespace("hilldiv3", quietly = TRUE),
           identical(rownames(overview_abundance), genome_metadata$genome_id),
           identical(colnames(overview_abundance), sample_metadata$sample_id))
 
-# The installed 3.0.0 release computes one type per hilldiv() call. Separate
-# calls also make the neutral and phylogenetic inputs explicit in newer builds.
 plain_hill_result <- function(x) {
   class(x) <- "data.frame"
   x
 }
+```
 
-alpha_neutral <- plain_hill_result(hilldiv3::hilldiv(
+## Within-sample diversity
+
+`hilldiv()` calculates one diversity type per call. The tree and pooled
+reference depth are supplied only for phylogenetic diversity.
+
+```{r diversity_alpha_hilldiv, message=FALSE, class.source='script-source hilldiv3-source'}
+alpha_neutral <- hilldiv3::hilldiv(
   overview_abundance, q = c(0, 1, 2), type = "neutral"
-))
-alpha_phylogenetic <- plain_hill_result(hilldiv3::hilldiv(
+)
+alpha_phylogenetic <- hilldiv3::hilldiv(
   overview_abundance, q = c(0, 1, 2), tree = genome_tree,
   type = "phylogenetic", reference = "pool"
-))
+)
+```
+
+For the plots and table below, the results are joined to habitat labels.
+
+```{r diversity_alpha_data, include=FALSE}
+alpha_neutral <- plain_hill_result(alpha_neutral)
+alpha_phylogenetic <- plain_hill_result(alpha_phylogenetic)
 alpha_neutral$type <- "Neutral"
 alpha_phylogenetic$type <- "Phylogenetic"
 alpha_diversity <- rbind(alpha_neutral, alpha_phylogenetic)
@@ -44,8 +56,6 @@ alpha_diversity$type <- factor(alpha_diversity$type,
 alpha_diversity$order <- factor(alpha_diversity$q, levels = c(0, 1, 2),
                                 labels = c("q = 0", "q = 1", "q = 2"))
 ```
-
-## Within-sample diversity
 
 ```{r diversity_alpha_plot, fig.width=11, fig.height=7.5, fig.alt="Boxplots and sample points for neutral and phylogenetic Hill diversity at orders 0, 1, and 2 across eight habitats."}
 ggplot2::ggplot(alpha_diversity,
@@ -103,6 +113,66 @@ compared within the phylogenetic panels, rather than interpreted as counts of
 MAGs. Neutral $q=0$ is the number of representatives with a positive reported
 abundance; it is sensitive to very small values in the source profiles.
 
+## Diversity profiles across orders
+
+`hillprof()` extends the three selected orders to a finer sweep. To keep
+the comparison readable, each habitat profile below is the mean of its 45
+sample abundance vectors. These are descriptive pooled profiles; their $q=0$
+values count representatives detected in any of those samples.
+
+```{r diversity_profile_inputs, include=FALSE}
+habitat_profiles <- sapply(habitat_levels, function(h) {
+  rowMeans(overview_abundance[, sample_metadata$habitat_label == h,
+                              drop = FALSE])
+})
+rownames(habitat_profiles) <- rownames(overview_abundance)
+```
+
+```{r diversity_hillprof, message=FALSE, class.source='script-source hilldiv3-source'}
+profile_neutral <- hilldiv3::hillprof(
+  habitat_profiles, q = seq(0, 2, by = 0.25), type = "neutral"
+)
+profile_phylogenetic <- hilldiv3::hillprof(
+  habitat_profiles, q = seq(0, 2, by = 0.25), tree = genome_tree,
+  type = "phylogenetic", reference = "pool"
+)
+```
+
+```{r diversity_profile_data, include=FALSE}
+profile_neutral <- plain_hill_result(profile_neutral)
+profile_phylogenetic <- plain_hill_result(profile_phylogenetic)
+profile_neutral$type <- "Neutral"
+profile_phylogenetic$type <- "Phylogenetic"
+profiles <- rbind(profile_neutral, profile_phylogenetic)
+profiles$sample <- factor(profiles$sample, levels = habitat_levels)
+profiles$type <- factor(profiles$type, levels = c("Neutral", "Phylogenetic"))
+stopifnot(nrow(profiles) == 2L * 9L * length(habitat_levels),
+          all(is.finite(profiles$value)), all(profiles$value > 0))
+```
+
+```{r diversity_profile_plot, fig.width=10, fig.height=6, fig.alt="Neutral and phylogenetic diversity profiles from q zero to two for mean abundance profiles of eight habitats."}
+ggplot2::ggplot(profiles,
+                ggplot2::aes(x = q, y = value, colour = sample)) +
+  ggplot2::geom_line(linewidth = 0.7) +
+  ggplot2::scale_colour_manual(values = grDevices::hcl.colors(
+    length(habitat_levels), palette = "Dark 3")) +
+  ggplot2::scale_y_log10() +
+  ggplot2::facet_wrap(~ type, scales = "free_y") +
+  ggplot2::labs(x = "Diversity order (q)", y = "Hill diversity (log scale)",
+                colour = "Habitat") +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                 strip.text = ggplot2::element_text(face = "bold"))
+```
+
+*Diversity profiles of the mean abundance vector in each habitat. The two
+panels use separate vertical scales; values should be compared within a panel.*
+
+The neutral ranking changes with order: bog/fen soil has the highest pooled
+richness at $q=0$, while forest soil has the highest diversity at $q=1$ and
+$q=2$. This illustrates why a single diversity order does not capture every
+aspect of a profile.
+
 ## Partitioning across habitats
 
 The next calculation partitions diversity across individual samples, habitat
@@ -111,21 +181,32 @@ the effective number of distinct units added at that scale. The two beta
 factors multiply to give the total gamma-to-alpha ratio. Each sample has equal
 weight; the design has 45 samples in every habitat class.
 
-```{r diversity_partition}
+```{r diversity_partition_inputs, include=FALSE}
 habitat_metadata <- data.frame(
   habitat_class = sample_metadata$habitat_class,
   row.names = sample_metadata$sample_id
 )
-partition_neutral <- plain_hill_result(hilldiv3::hillpart(
+```
+
+`hillpart()` uses the habitat metadata to partition diversity across the
+sample-to-habitat and habitat-to-panel scales.
+
+```{r diversity_hillpart, message=FALSE, class.source='script-source hilldiv3-source'}
+partition_neutral <- hilldiv3::hillpart(
   overview_abundance, q = c(0, 1, 2),
   hierarchy = ~ habitat_class, metadata = habitat_metadata,
   type = "neutral"
-))
-partition_phylogenetic <- plain_hill_result(hilldiv3::hillpart(
+)
+partition_phylogenetic <- hilldiv3::hillpart(
   overview_abundance, q = c(0, 1, 2), tree = genome_tree,
   hierarchy = ~ habitat_class, metadata = habitat_metadata,
   type = "phylogenetic"
-))
+)
+```
+
+```{r diversity_partition_table}
+partition_neutral <- plain_hill_result(partition_neutral)
+partition_phylogenetic <- plain_hill_result(partition_phylogenetic)
 partition_neutral$type <- "Neutral"
 partition_phylogenetic$type <- "Phylogenetic"
 partition <- rbind(partition_neutral, partition_phylogenetic)

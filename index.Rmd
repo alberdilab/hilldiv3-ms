@@ -70,12 +70,14 @@ sampling dates, geography, and representative genomes.
 ### Step 2 - Initial diversity analyses
 
 The [diversity analyses](#diversity) chapter calculates neutral and
-phylogenetic Hill numbers at orders 0, 1, and 2, then partitions diversity
-within and between the eight habitat classes using `hilldiv3`.
+phylogenetic Hill numbers at orders 0, 1, and 2, traces diversity profiles
+across orders, then partitions diversity within and between the eight habitat
+classes. The `hilldiv3` calls appear in highlighted code blocks.
 
 ### Step 3 - Pairwise beta diversity
 
 The [pairwise beta diversity](#pairwise-beta) chapter compares every pair of
 samples with neutral and phylogenetic Hill-number C dissimilarity. It summarizes
 within- and between-habitat pairs and shows habitat heatmaps and sample-level
-ordinations at $q=0$ and $q=1$.
+ordinations at $q=0$ and $q=1$. The `hillpair()` calls are shown before the
+code that formats their results.

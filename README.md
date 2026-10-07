@@ -4,8 +4,9 @@ This repository stages the Microflora Danica data panel for a worked example in
 the **hilldiv3** manuscript. It contains a genome by sample abundance table,
 sample and genome metadata, and a phylogenetic tree on the same 5,518 genomes.
 The webbook includes a data overview, neutral and phylogenetic diversity
-analyses, and pairwise beta diversity comparisons. Functional annotations
-remain for a later stage.
+analyses, diversity profiles across orders, and pairwise beta diversity
+comparisons. Its `hilldiv3` calls are highlighted separately from the plotting
+and tabulation code. Functional annotations remain for a later stage.
 
 ## Bookdown publication
 
