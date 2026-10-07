@@ -1,0 +1,237 @@
+# Pairwise beta diversity {#pairwise-beta}
+
+The [diversity chapter](#diversity) partitions turnover across the whole panel.
+Here we compare every pair of the 360 samples with `hilldiv3::hillpair()`.
+For each pair, we use the C dissimilarity, the complement of the C overlap
+derived from multiplicative Hill beta diversity. It ranges from zero for
+identical communities to one for no overlap. We calculate neutral and
+phylogenetic values at $q=0$, $q=1$, and $q=2$ using the same representative
+profiles and tree as above. Each type and order has
+`r choose(ncol(overview_abundance), 2)` unique sample pairs.
+
+```{r pairwise_setup, include=FALSE}
+# Explicit sample IDs make the pair-to-habitat mapping unambiguous.
+pair_neutral <- plain_hill_result(hilldiv3::hillpair(
+  overview_abundance, q = c(0, 1, 2), metric = "C",
+  type = "neutral", out = "tibble"
+))
+pair_phylogenetic <- plain_hill_result(hilldiv3::hillpair(
+  overview_abundance, q = c(0, 1, 2), metric = "C",
+  tree = genome_tree, type = "phylogenetic", out = "tibble"
+))
+pair_neutral$type <- "Neutral"
+pair_phylogenetic$type <- "Phylogenetic"
+pairwise <- rbind(pair_neutral, pair_phylogenetic)
+sample_ids <- sample_metadata$sample_id
+first_idx <- match(pairwise$first, sample_ids)
+second_idx <- match(pairwise$second, sample_ids)
+stopifnot(
+  nrow(pairwise) == 2L * 3L * choose(length(sample_ids), 2L),
+  !anyNA(first_idx), !anyNA(second_idx),
+  all(first_idx < second_idx),
+  identical(sort(unique(pairwise$q)), c(0, 1, 2)),
+  identical(unique(pairwise$metric), "C"),
+  all(is.finite(pairwise$value)),
+  all(pairwise$value >= -1e-10 & pairwise$value <= 1 + 1e-10)
+)
+pairwise$habitat_first <- sample_metadata$habitat_label[first_idx]
+pairwise$habitat_second <- sample_metadata$habitat_label[second_idx]
+pairwise$comparison <- ifelse(
+  pairwise$habitat_first == pairwise$habitat_second,
+  "Within habitat", "Between habitats"
+)
+pairwise$type <- factor(pairwise$type,
+                        levels = c("Neutral", "Phylogenetic"))
+```
+
+## Within and between habitats
+
+The table summarizes all sample pairs in each category. A habitat contributes
+990 within-habitat pairs; two distinct habitats contribute 2,025 pairs. These
+pairs share samples, so their values are descriptive observations rather than
+independent replicates for a significance test.
+
+```{r pairwise_within_between}
+pair_summary <- do.call(rbind, lapply(
+  split(pairwise, list(pairwise$type, pairwise$q,
+                       pairwise$comparison), drop = TRUE),
+  function(d) data.frame(
+    Type = as.character(d$type[1]), q = d$q[1],
+    Comparison = d$comparison[1], Pairs = nrow(d),
+    Median = median(d$value),
+    Q1 = unname(quantile(d$value, 0.25)),
+    Q3 = unname(quantile(d$value, 0.75))
+  )
+))
+pair_summary <- pair_summary[
+  order(match(pair_summary$Type, c("Neutral", "Phylogenetic")),
+        pair_summary$q,
+        match(pair_summary$Comparison,
+              c("Within habitat", "Between habitats"))),
+]
+pair_summary$`Median [IQR]` <- sprintf(
+  "%.3f [%.3f–%.3f]", pair_summary$Median,
+  pair_summary$Q1, pair_summary$Q3
+)
+knitr::kable(pair_summary[c("Type", "q", "Comparison", "Pairs",
+                            "Median [IQR]")], row.names = FALSE)
+```
+
+*C dissimilarity for all unique sample pairs, summarized as median
+[interquartile range]. Each within-habitat row contains eight sets of 990
+pairs; each between-habitat row contains 28 sets of 2,025 pairs.*
+
+```{r pairwise_within_between_interpretation, echo=FALSE, results='asis'}
+q1_pairs <- pair_summary[pair_summary$q == 1, ]
+for (diversity_type in c("Neutral", "Phylogenetic")) {
+  d <- q1_pairs[q1_pairs$Type == diversity_type, ]
+  within_median <- d$Median[d$Comparison == "Within habitat"]
+  between_median <- d$Median[d$Comparison == "Between habitats"]
+  cat(sprintf(
+    "At $q=1$, %s C dissimilarity has median %.3f within habitats and %.3f between habitats.\n\n",
+    tolower(diversity_type), within_median, between_median
+  ))
+}
+```
+
+Neutral between-habitat medians are close to one at every order, including
+$q=2$, where common representatives carry the most weight. Phylogenetic
+between-habitat medians decrease from $q=0$ to $q=2$, consistent with greater
+shared branch structure among the more abundant representatives.
+
+## Habitat pair comparisons
+
+We take the median across the sample pairs for each pair of habitats. A
+diagonal cell summarizes pairs of *different samples* from the same habitat;
+it is not a self-comparison. The heatmaps show $q=1$, with a common zero-to-one
+colour scale for both diversity types.
+
+```{r pairwise_habitat_heatmap_data, include=FALSE}
+q1_pairwise <- pairwise[pairwise$q == 1, ]
+habitat_short <- c(
+  "Field soil", "Grassland soil", "Forest soil", "Urban greenspace",
+  "Bog/fen soil", "Freshwater sediment", "Saltwater sediment",
+  "Wastewater"
+)
+stopifnot(length(habitat_short) == length(habitat_levels))
+habitat_i <- match(q1_pairwise$habitat_first, habitat_levels)
+habitat_j <- match(q1_pairwise$habitat_second, habitat_levels)
+stopifnot(!anyNA(habitat_i), !anyNA(habitat_j))
+habitat_pairs <- aggregate(
+  q1_pairwise$value,
+  by = list(type = as.character(q1_pairwise$type),
+            lower = pmin(habitat_i, habitat_j),
+            upper = pmax(habitat_i, habitat_j)),
+  FUN = median
+)
+names(habitat_pairs)[4] <- "median"
+heatmap_data <- expand.grid(
+  type = c("Neutral", "Phylogenetic"),
+  row = seq_along(habitat_levels),
+  column = seq_along(habitat_levels),
+  KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
+)
+pair_key <- function(type, i, j) paste(type, pmin(i, j), pmax(i, j))
+heatmap_data$median <- habitat_pairs$median[
+  match(pair_key(heatmap_data$type, heatmap_data$row,
+                 heatmap_data$column),
+        pair_key(habitat_pairs$type, habitat_pairs$lower,
+                 habitat_pairs$upper))
+]
+stopifnot(nrow(habitat_pairs) == 2L * 36L,
+          !anyNA(heatmap_data$median))
+heatmap_data$Habitat1 <- factor(
+  habitat_short[heatmap_data$row], levels = rev(habitat_short)
+)
+heatmap_data$Habitat2 <- factor(
+  habitat_short[heatmap_data$column], levels = habitat_short
+)
+```
+
+```{r pairwise_habitat_heatmap, fig.width=9.5, fig.height=11, fig.alt="Two heatmaps of median order-one C dissimilarity for all pairs of eight habitats, for neutral and phylogenetic diversity."}
+ggplot2::ggplot(heatmap_data,
+                ggplot2::aes(x = Habitat2, y = Habitat1, fill = median)) +
+  ggplot2::geom_tile(colour = "white", linewidth = 0.5) +
+  ggplot2::geom_text(ggplot2::aes(label = sprintf("%.2f", median),
+                                 colour = median > 0.55), size = 3) +
+  ggplot2::scale_colour_manual(values = c(`FALSE` = "#292929",
+                                          `TRUE` = "white"), guide = "none") +
+  ggplot2::scale_fill_gradient(low = "#f7f7f7", high = "#8b1e1e",
+                               limits = c(0, 1), name = "C dissimilarity") +
+  ggplot2::facet_wrap(~ type, ncol = 1) +
+  ggplot2::coord_equal() +
+  ggplot2::labs(x = NULL, y = NULL) +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(panel.grid = ggplot2::element_blank(),
+                 axis.text.x = ggplot2::element_text(angle = 35, hjust = 1),
+                 strip.text = ggplot2::element_text(face = "bold"))
+```
+
+*Median $q=1$ C dissimilarity across 990 pairs on each diagonal and 2,025
+pairs in each off-diagonal habitat combination. The matrices are symmetric.*
+
+Saltwater sediment and wastewater are nearly maximally dissimilar to the soil
+habitats at $q=1$ in the neutral analysis. Their phylogenetic dissimilarities
+are lower, showing that the sample pairs retain some shared evolutionary
+branch structure despite little overlap in representative profiles.
+
+## Sample-level ordination
+
+Principal coordinates analysis (PCoA) projects the $q=1$ dissimilarities into
+two dimensions. We apply a Cailliez correction because C dissimilarity need
+not be Euclidean. Axis percentages refer to the corrected distance matrix;
+the plot is a two-dimensional summary of the complete pairwise matrix.
+
+```{r pairwise_ordination_data, include=FALSE}
+ordination_rows <- lapply(c("Neutral", "Phylogenetic"), function(diversity_type) {
+  d <- q1_pairwise[q1_pairwise$type == diversity_type, ]
+  first <- match(d$first, sample_ids)
+  second <- match(d$second, sample_ids)
+  stopifnot(nrow(d) == choose(length(sample_ids), 2L),
+            !anyDuplicated(paste(first, second)),
+            all(first < second))
+  distances <- matrix(0, nrow = length(sample_ids),
+                      ncol = length(sample_ids),
+                      dimnames = list(sample_ids, sample_ids))
+  distances[cbind(first, second)] <- d$value
+  distances[cbind(second, first)] <- d$value
+  ord <- stats::cmdscale(stats::as.dist(distances), k = 2,
+                         eig = TRUE, add = TRUE)
+  variance <- 100 * ord$eig[1:2] / sum(pmax(ord$eig, 0))
+  data.frame(
+    sample_id = sample_ids,
+    habitat = sample_metadata$habitat_label,
+    PCoA1 = ord$points[, 1], PCoA2 = ord$points[, 2],
+    panel = sprintf("%s (axes: %.1f%%, %.1f%%)",
+                    diversity_type, variance[1], variance[2])
+  )
+})
+ordination <- do.call(rbind, ordination_rows)
+ordination$habitat <- factor(ordination$habitat, levels = habitat_levels)
+stopifnot(nrow(ordination) == 2L * length(sample_ids),
+          all(is.finite(ordination$PCoA1)),
+          all(is.finite(ordination$PCoA2)))
+```
+
+```{r pairwise_ordination, fig.width=11, fig.height=5.5, fig.alt="Principal coordinates plots of order-one neutral and phylogenetic C dissimilarity among 360 samples, coloured by habitat."}
+ggplot2::ggplot(ordination,
+                ggplot2::aes(x = PCoA1, y = PCoA2, colour = habitat)) +
+  ggplot2::geom_point(alpha = 0.75, size = 1.5) +
+  ggplot2::scale_colour_manual(values = grDevices::hcl.colors(
+    length(habitat_levels), palette = "Dark 3")) +
+  ggplot2::facet_wrap(~ panel, scales = "free") +
+  ggplot2::labs(x = "PCoA 1", y = "PCoA 2", colour = "Habitat") +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                 strip.text = ggplot2::element_text(face = "bold"))
+```
+
+*Each point is one sample. Axis percentages are the shares of positive
+eigenvalues after the Cailliez correction; coordinates are comparable only
+within a panel.*
+
+The pairwise patterns describe this selected panel. Pairs sharing samples are
+dependent, and habitat class is partly confounded with sampling year. We do
+not treat visual separation or differences between pairwise medians as a
+formal test of a habitat effect. As elsewhere, $q=0$ responds to very small
+reported abundances in the source profiles.

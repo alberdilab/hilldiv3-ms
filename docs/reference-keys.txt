@@ -6,6 +6,7 @@ analysis-steps
 step-0---data-preparation
 step-1---data-overview
 step-2---initial-diversity-analyses
+step-3---pairwise-beta-diversity
 data-preparation
 input-data
 load-the-staged-panel
@@ -20,3 +21,7 @@ representative-genomes
 diversity
 within-sample-diversity
 partitioning-across-habitats
+pairwise-beta
+within-and-between-habitats
+habitat-pair-comparisons
+sample-level-ordination

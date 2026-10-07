@@ -3,8 +3,9 @@
 This repository stages the Microflora Danica data panel for a worked example in
 the **hilldiv3** manuscript. It contains a genome by sample abundance table,
 sample and genome metadata, and a phylogenetic tree on the same 5,518 genomes.
-The webbook now includes a data overview and initial neutral and phylogenetic
-diversity analyses. Functional annotations remain for a later stage.
+The webbook includes a data overview, neutral and phylogenetic diversity
+analyses, and pairwise beta diversity comparisons. Functional annotations
+remain for a later stage.
 
 ## Bookdown publication
 
@@ -14,7 +15,7 @@ and [`calotriton_metagenomics`](https://github.com/alberdilab/calotriton_metagen
 numbered R Markdown chapters in the repository root, the AlberdiLab GitBook
 style in `style.css` and `_output.yml`, and rendered pages committed in `docs/`.
 The numbered chapters cover data preparation, a geographic and genomic
-overview, and initial analyses with `hilldiv3`.
+overview, initial analyses with `hilldiv3`, and pairwise beta diversity.
 
 Install R packages `bookdown`, `rmarkdown`, `knitr`, `data.table`, `ape`,
 `ggplot2`, `maps`, and `hilldiv3`.
