@@ -1,0 +1,217 @@
+# Taxonomic shares of Hill power sums {#shares}
+
+The [diversity](#diversity) and [pairwise beta diversity](#pairwise-beta)
+chapters describe whole communities. Here we use `hilldiv3::hillshare()` to
+allocate each sample's Hill **power sum** to sets of representative MAGs.
+A share is a fraction between zero and one, not a fraction of the effective
+Hill number reported by `hilldiv()`. The calculation is descriptive; it does
+not test whether a phylum is enriched in a habitat.
+
+This chapter was rendered with `hilldiv3` version
+`r as.character(utils::packageVersion("hilldiv3"))`.
+
+## Define the genome sets
+
+We use four phyla with contrasting profiles across the panel. The `Other`
+set contains every remaining representative, so the five sets are disjoint
+and exhaustive. Each representative stands for its published 95% ANI cluster;
+the shares describe those cluster profiles, not the abundance of every MAG
+within a cluster.
+
+```{r share_sets}
+phylum <- sub("^p__", "", genome_metadata$phylum)
+focus_phyla <- c("Pseudomonadota", "Actinomycetota",
+                  "Acidobacteriota", "Bacteroidota")
+share_sets <- lapply(focus_phyla, function(name) {
+  genome_metadata$genome_id[phylum == name]
+})
+names(share_sets) <- focus_phyla
+share_sets$Other <- genome_metadata$genome_id[!phylum %in% focus_phyla]
+stopifnot(sum(lengths(share_sets)) == nrow(genome_metadata),
+          setequal(unlist(share_sets, use.names = FALSE),
+                   genome_metadata$genome_id))
+```
+
+`hillshare()` returns one row for each sample, order, diversity type, and set.
+The phylogenetic call uses the same representative tree as the earlier
+chapters. Both diversity types are requested together.
+
+```{r share_hillshare, message=FALSE, class.source='script-source hilldiv3-source'}
+shares <- hilldiv3::hillshare(
+  overview_abundance, q = c(0, 1, 2), tree = genome_tree,
+  type = c("neutral", "phylogenetic"), sets = share_sets
+)
+```
+
+```{r share_checks, include=FALSE}
+stopifnot(
+  nrow(shares) == 2L * 3L * ncol(overview_abundance) * length(share_sets),
+  all(is.finite(shares$share)),
+  all(shares$share >= -1e-10 & shares$share <= 1 + 1e-10)
+)
+share_totals <- aggregate(share ~ sample + q + type, shares, sum)
+stopifnot(nrow(share_totals) == 2L * 3L * ncol(overview_abundance),
+          max(abs(share_totals$share - 1)) < 1e-10)
+shares$habitat <- sample_metadata$habitat_label[
+  match(shares$sample, sample_metadata$sample_id)
+]
+stopifnot(!anyNA(shares$habitat))
+```
+
+## Shares across habitats
+
+The heatmap shows the median share among the 45 samples in each habitat. Its
+colour scale is the same in every panel. At neutral $q=1$, a set's share equals
+its summed relative abundance. At $q=0$, each detected representative has
+equal neutral weight; at $q=2$, abundant representatives carry more weight.
+Phylogenetic shares also allocate the weights of tree branches to their
+descendant representatives.
+
+```{r share_heatmap_data, include=FALSE}
+share_habitat_short <- c(
+  "Field soil", "Grassland", "Forest", "Urban green", "Bog/fen",
+  "Freshwater", "Saltwater", "Wastewater"
+)
+stopifnot(length(share_habitat_short) == length(habitat_levels))
+share_medians <- aggregate(share ~ habitat + q + type + set, shares, median)
+share_medians$Habitat <- factor(
+  share_habitat_short[match(share_medians$habitat, habitat_levels)],
+  levels = share_habitat_short
+)
+share_medians$Set <- factor(share_medians$set,
+                            levels = rev(names(share_sets)))
+share_medians$Type <- factor(share_medians$type,
+                             levels = c("neutral", "phylogenetic"),
+                             labels = c("Neutral", "Phylogenetic"))
+share_medians$Order <- factor(share_medians$q, levels = c(0, 1, 2),
+                              labels = c("q = 0", "q = 1", "q = 2"))
+stopifnot(!anyNA(share_medians$Habitat),
+          nrow(share_medians) == 2L * 3L * length(habitat_levels) *
+            length(share_sets))
+```
+
+```{r share_heatmap, fig.width=13, fig.height=10, fig.alt="Six heatmaps show the median share of four phyla and all other representatives across eight habitats, for neutral and phylogenetic diversity at orders zero, one, and two."}
+ggplot2::ggplot(share_medians,
+                ggplot2::aes(x = Habitat, y = Set, fill = share)) +
+  ggplot2::geom_tile(colour = "white", linewidth = 0.4) +
+  ggplot2::scale_fill_gradient(
+    low = "#f7f7f7", high = "#8b1e1e", limits = c(0, 1),
+    labels = function(x) sprintf("%.0f%%", 100 * x), name = "Median share"
+  ) +
+  ggplot2::facet_grid(Order ~ Type) +
+  ggplot2::labs(x = NULL, y = NULL) +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(
+    panel.grid = ggplot2::element_blank(),
+    axis.text.x = ggplot2::element_text(angle = 35, hjust = 1),
+    strip.text = ggplot2::element_text(face = "bold")
+  )
+```
+
+*Median power-sum shares in each habitat. Medians are taken separately for
+each set, so the displayed medians need not sum to one; the five shares sum to
+one within every individual sample, type, and order.*
+
+The selected phyla show different habitat patterns. Bacteroidota contributes
+little neutral $q=1$ weight in most soil samples but substantially more in
+saltwater sediment and wastewater. The next figure retains the sample-level
+values behind that contrast.
+
+```{r share_bacteroidota_data, include=FALSE}
+bacteroidota <- shares[
+  shares$set == "Bacteroidota" & shares$type == "neutral" & shares$q == 1,
+]
+bacteroidota$habitat <- factor(bacteroidota$habitat,
+                               levels = rev(habitat_levels))
+stopifnot(nrow(bacteroidota) == nrow(sample_metadata))
+```
+
+```{r share_bacteroidota, fig.width=10, fig.height=5.8, fig.alt="Boxplots and individual sample points show the neutral order-one Bacteroidota power-sum share in each of eight habitats."}
+ggplot2::ggplot(bacteroidota,
+                ggplot2::aes(x = share, y = habitat)) +
+  ggplot2::geom_boxplot(outlier.shape = NA, width = 0.55,
+                        fill = "#e6c7c7", colour = "#702626") +
+  ggplot2::geom_jitter(height = 0.13, width = 0, alpha = 0.4,
+                       size = 0.8, colour = "#702626") +
+  ggplot2::scale_x_continuous(
+    labels = function(x) sprintf("%.0f%%", 100 * x),
+    expand = ggplot2::expansion(mult = c(0, 0.03))
+  ) +
+  ggplot2::labs(x = "Bacteroidota share, neutral q = 1", y = NULL) +
+  ggplot2::theme_minimal(base_size = 11) +
+  ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
+```
+
+*Each point is one sample; boxes show medians and interquartile ranges. A zero
+means no representative from this phylum was detected in that sample.*
+
+The median Bacteroidota share is
+`r sprintf("%.1f%%", 100 * median(bacteroidota$share[bacteroidota$habitat == "Urban wastewater water"]))`
+in wastewater and
+`r sprintf("%.1f%%", 100 * median(bacteroidota$share[bacteroidota$habitat == "Natural saltwater sediment"]))`
+in saltwater sediment. It is zero in agricultural field soil, where the phylum
+is detected in only
+`r sum(bacteroidota$share[bacteroidota$habitat == "Agricultural field soil"] > 0)`
+of 45 selected samples.
+
+## How order and tree weighting change a share
+
+For Pseudomonadota, the next plot compares sample medians and interquartile
+ranges across orders in four habitats. The lines connect summaries, not
+individual samples. A shared vertical scale makes both diversity types
+directly visible.
+
+```{r share_order_data, include=FALSE}
+share_profile_habitats <- c(
+  "Urban greenspace soil", "Natural forest soil",
+  "Natural freshwater sediment", "Urban wastewater water"
+)
+pseudomonadota <- data.table::as.data.table(shares[
+  shares$set == "Pseudomonadota" &
+    shares$habitat %in% share_profile_habitats,
+])
+share_order <- pseudomonadota[
+  , .(median = median(share), lower = as.numeric(quantile(share, 0.25)),
+      upper = as.numeric(quantile(share, 0.75))),
+  by = .(habitat, type, q)
+]
+share_order$habitat <- factor(share_order$habitat,
+                              levels = share_profile_habitats)
+share_order$Type <- factor(share_order$type,
+                           levels = c("neutral", "phylogenetic"),
+                           labels = c("Neutral", "Phylogenetic"))
+stopifnot(nrow(share_order) == length(share_profile_habitats) * 2L * 3L)
+```
+
+```{r share_order_plot, fig.width=10, fig.height=7.5, fig.alt="Four panels show Pseudomonadota median power-sum shares and interquartile ranges at orders zero, one, and two, with separate neutral and phylogenetic lines."}
+ggplot2::ggplot(share_order,
+                ggplot2::aes(x = q, y = median, colour = Type, group = Type)) +
+  ggplot2::geom_errorbar(ggplot2::aes(ymin = lower, ymax = upper),
+                         width = 0.09, linewidth = 0.5) +
+  ggplot2::geom_line(linewidth = 0.8) +
+  ggplot2::geom_point(size = 2) +
+  ggplot2::scale_x_continuous(breaks = c(0, 1, 2)) +
+  ggplot2::scale_y_continuous(
+    limits = c(0, 1), breaks = seq(0, 1, by = 0.2),
+    labels = function(x) sprintf("%.0f%%", 100 * x)
+  ) +
+  ggplot2::scale_colour_manual(values = c("Neutral" = "#702626",
+                                          "Phylogenetic" = "#1b6b75")) +
+  ggplot2::facet_wrap(~ habitat, ncol = 2) +
+  ggplot2::labs(x = "Diversity order (q)", y = "Pseudomonadota share",
+                colour = NULL) +
+  ggplot2::theme_minimal(base_size = 11) +
+  ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                 strip.text = ggplot2::element_text(face = "bold"))
+```
+
+*Points are medians across 45 samples; bars are interquartile ranges. They
+describe the selected panel and are not confidence intervals.*
+
+The phylogenetic tree is rooted but not ultrametric. At $q=1$, differences
+between neutral and phylogenetic shares reflect root-to-tip path lengths in
+addition to abundance. At other orders, shared branch weights also affect
+the allocation. The panel has no matched functional-distance matrix, so we
+restrict this example to neutral and phylogenetic shares. Habitat and
+sampling year are partly confounded; these figures do not establish a habitat
+effect.

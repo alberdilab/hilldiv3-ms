@@ -5,7 +5,8 @@ the **hilldiv3** manuscript. It contains a genome by sample abundance table,
 sample and genome metadata, and a phylogenetic tree on the same 5,518 genomes.
 The webbook includes a data overview, neutral and phylogenetic diversity
 analyses, diversity profiles across orders, and pairwise beta diversity
-comparisons. Its `hilldiv3` calls are highlighted separately from the plotting
+comparisons. It also allocates Hill power-sum shares to taxonomic sets with
+`hillshare()`. Its `hilldiv3` calls are highlighted separately from the plotting
 and tabulation code. Functional annotations remain for a later stage.
 
 ## Bookdown publication
@@ -16,16 +17,21 @@ and [`calotriton_metagenomics`](https://github.com/alberdilab/calotriton_metagen
 numbered R Markdown chapters in the repository root, the AlberdiLab GitBook
 style in `style.css` and `_output.yml`, and rendered pages committed in `docs/`.
 The numbered chapters cover data preparation, a geographic and genomic
-overview, initial analyses with `hilldiv3`, and pairwise beta diversity.
+overview, initial analyses with `hilldiv3`, pairwise beta diversity, and
+taxonomic power-sum shares.
 
 Install R packages `bookdown`, `rmarkdown`, `knitr`, `data.table`, `ape`,
-`ggplot2`, `maps`, and `hilldiv3`.
+`ggplot2`, `maps`, and `hilldiv3` 3.1.0 or later. The webbook in `docs/` was
+rendered with `hilldiv3` 3.1.0 from source commit `7253cb6`. With an adjacent
+checkout of that source, install it using `R CMD INSTALL ../hilldiv3`.
 To render the webbook from the repository root, run:
 
-```r
-bookdown::render_book(input = ".", output_format = "bookdown::gitbook",
-                      output_dir = "docs")
+```sh
+Rscript scripts/render-webbook.R
 ```
+
+The render script embeds the existing Fuse.js search dependency so the
+`self_contained` pages do not depend on a CDN at viewing time.
 
 Commit the updated `docs/` output with the R Markdown sources. GitHub Pages
 serves `docs/` from `main` at

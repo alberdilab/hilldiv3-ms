@@ -51,6 +51,7 @@ library(knitr)
 library(ggplot2)
 library(maps)
 library(hilldiv3)
+stopifnot(utils::packageVersion("hilldiv3") >= "3.1.0")
 ```
 
 ## Analysis steps
@@ -81,3 +82,10 @@ samples with neutral and phylogenetic Hill-number C dissimilarity. It summarizes
 within- and between-habitat pairs and shows habitat heatmaps and sample-level
 ordinations at $q=0$ and $q=1$. The `hillpair()` calls are shown before the
 code that formats their results.
+
+### Step 4 - Taxonomic shares
+
+The [taxonomic shares](#shares) chapter uses `hillshare()` to allocate neutral
+and phylogenetic Hill power sums to four named phyla and the remaining
+representatives. Figures compare habitats, diversity orders, and the
+sample-level variation behind those summaries.
