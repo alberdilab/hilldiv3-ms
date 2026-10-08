@@ -7,7 +7,7 @@ step-0---data-preparation
 step-1---data-overview
 step-2---initial-diversity-analyses
 step-3---pairwise-beta-diversity
-step-4---taxonomic-shares
+step-4---taxonomic-shares-and-contributions
 data-preparation
 input-data
 load-the-staged-panel
@@ -31,3 +31,4 @@ shares
 define-the-genome-sets
 shares-across-habitats
 how-order-and-tree-weighting-change-a-share
+which-phyla-account-for-dissimilarity

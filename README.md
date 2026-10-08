@@ -7,7 +7,9 @@ The webbook includes a data overview, neutral and phylogenetic diversity
 analyses, diversity profiles across orders, and pairwise beta diversity
 comparisons. It also allocates Hill power-sum shares to taxonomic sets with
 `hillshare()`. Its `hilldiv3` calls are highlighted separately from the plotting
-and tabulation code. Functional annotations remain for a later stage.
+and tabulation code. A focused `hillcontrib()` comparison attributes
+soil–wastewater dissimilarity to the same taxonomic sets. Functional
+annotations remain for a later stage.
 
 ## Bookdown publication
 
@@ -18,11 +20,11 @@ numbered R Markdown chapters in the repository root, the AlberdiLab GitBook
 style in `style.css` and `_output.yml`, and rendered pages committed in `docs/`.
 The numbered chapters cover data preparation, a geographic and genomic
 overview, initial analyses with `hilldiv3`, pairwise beta diversity, and
-taxonomic power-sum shares.
+taxonomic power-sum shares and dissimilarity contributions.
 
 Install R packages `bookdown`, `rmarkdown`, `knitr`, `data.table`, `ape`,
-`ggplot2`, `maps`, and `hilldiv3` 3.1.0 or later. The webbook in `docs/` was
-rendered with `hilldiv3` 3.1.0 from source commit `7253cb6`. With an adjacent
+`ggplot2`, `maps`, and `hilldiv3` 3.1.0.9000 or later. The webbook in `docs/` was
+rendered with `hilldiv3` 3.1.0.9000 from source commit `263360c`. With an adjacent
 checkout of that source, install it using `R CMD INSTALL ../hilldiv3`.
 To render the webbook from the repository root, run:
 

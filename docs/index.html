@@ -2058,7 +2058,7 @@ color: #a52929;
 <li class="chapter" data-level="1.2.2" data-path="index.html"><a href="index.html#step-1---data-overview"><i class="fa fa-check"></i><b>1.2.2</b> Step 1 - Data overview</a></li>
 <li class="chapter" data-level="1.2.3" data-path="index.html"><a href="index.html#step-2---initial-diversity-analyses"><i class="fa fa-check"></i><b>1.2.3</b> Step 2 - Initial diversity analyses</a></li>
 <li class="chapter" data-level="1.2.4" data-path="index.html"><a href="index.html#step-3---pairwise-beta-diversity"><i class="fa fa-check"></i><b>1.2.4</b> Step 3 - Pairwise beta diversity</a></li>
-<li class="chapter" data-level="1.2.5" data-path="index.html"><a href="index.html#step-4---taxonomic-shares"><i class="fa fa-check"></i><b>1.2.5</b> Step 4 - Taxonomic shares</a></li>
+<li class="chapter" data-level="1.2.5" data-path="index.html"><a href="index.html#step-4---taxonomic-shares-and-contributions"><i class="fa fa-check"></i><b>1.2.5</b> Step 4 - Taxonomic shares and contributions</a></li>
 </ul></li>
 </ul></li>
 <li class="chapter" data-level="2" data-path="data-preparation.html"><a href="data-preparation.html"><i class="fa fa-check"></i><b>2</b> Data preparation</a>
@@ -2088,11 +2088,12 @@ color: #a52929;
 <li class="chapter" data-level="5.2" data-path="pairwise-beta.html"><a href="pairwise-beta.html#habitat-pair-comparisons"><i class="fa fa-check"></i><b>5.2</b> Habitat pair comparisons</a></li>
 <li class="chapter" data-level="5.3" data-path="pairwise-beta.html"><a href="pairwise-beta.html#sample-level-ordination"><i class="fa fa-check"></i><b>5.3</b> Sample-level ordination</a></li>
 </ul></li>
-<li class="chapter" data-level="6" data-path="shares.html"><a href="shares.html"><i class="fa fa-check"></i><b>6</b> Taxonomic shares of Hill power sums</a>
+<li class="chapter" data-level="6" data-path="shares.html"><a href="shares.html"><i class="fa fa-check"></i><b>6</b> Taxonomic shares and dissimilarity contributions</a>
 <ul>
 <li class="chapter" data-level="6.1" data-path="shares.html"><a href="shares.html#define-the-genome-sets"><i class="fa fa-check"></i><b>6.1</b> Define the genome sets</a></li>
 <li class="chapter" data-level="6.2" data-path="shares.html"><a href="shares.html#shares-across-habitats"><i class="fa fa-check"></i><b>6.2</b> Shares across habitats</a></li>
 <li class="chapter" data-level="6.3" data-path="shares.html"><a href="shares.html#how-order-and-tree-weighting-change-a-share"><i class="fa fa-check"></i><b>6.3</b> How order and tree weighting change a share</a></li>
+<li class="chapter" data-level="6.4" data-path="shares.html"><a href="shares.html#which-phyla-account-for-dissimilarity"><i class="fa fa-check"></i><b>6.4</b> Which phyla account for dissimilarity?</a></li>
 </ul></li>
 <li class="divider"></li>
 <li><a href="https://www.alberdilab.dk" target="blank"><b>www.alberdilab.dk</b></a></li>
@@ -2146,7 +2147,7 @@ open <code>hilldiv3-ms.Rproj</code>, or create a new RStudio project from:</p>
 <span id="cb2-4"><a href="index.html#cb2-4" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
 <span id="cb2-5"><a href="index.html#cb2-5" tabindex="-1"></a><span class="fu">library</span>(maps)</span>
 <span id="cb2-6"><a href="index.html#cb2-6" tabindex="-1"></a><span class="fu">library</span>(hilldiv3)</span>
-<span id="cb2-7"><a href="index.html#cb2-7" tabindex="-1"></a><span class="fu">stopifnot</span>(utils<span class="sc">::</span><span class="fu">packageVersion</span>(<span class="st">&quot;hilldiv3&quot;</span>) <span class="sc">&gt;=</span> <span class="st">&quot;3.1.0&quot;</span>)</span></code></pre></div>
+<span id="cb2-7"><a href="index.html#cb2-7" tabindex="-1"></a><span class="fu">stopifnot</span>(utils<span class="sc">::</span><span class="fu">packageVersion</span>(<span class="st">&quot;hilldiv3&quot;</span>) <span class="sc">&gt;=</span> <span class="st">&quot;3.1.0.9000&quot;</span>)</span></code></pre></div>
 </div>
 </div>
 <div id="analysis-steps" class="section level2 hasAnchor" number="1.2">
@@ -2178,12 +2179,13 @@ within- and between-habitat pairs and shows habitat heatmaps and sample-level
 ordinations at <span class="math inline">\(q=0\)</span> and <span class="math inline">\(q=1\)</span>. The <code>hillpair()</code> calls are shown before the
 code that formats their results.</p>
 </div>
-<div id="step-4---taxonomic-shares" class="section level3 hasAnchor" number="1.2.5">
-<h3><span class="header-section-number">1.2.5</span> Step 4 - Taxonomic shares<a href="index.html#step-4---taxonomic-shares" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<div id="step-4---taxonomic-shares-and-contributions" class="section level3 hasAnchor" number="1.2.5">
+<h3><span class="header-section-number">1.2.5</span> Step 4 - Taxonomic shares and contributions<a href="index.html#step-4---taxonomic-shares-and-contributions" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>The <a href="shares.html#shares">taxonomic shares</a> chapter uses <code>hillshare()</code> to allocate neutral
 and phylogenetic Hill power sums to four named phyla and the remaining
 representatives. Figures compare habitats, diversity orders, and the
-sample-level variation behind those summaries.</p>
+sample-level variation behind those summaries. It then uses <code>hillcontrib()</code>
+to attribute a focused soil–wastewater dissimilarity to the same sets.</p>
 
 </div>
 </div>

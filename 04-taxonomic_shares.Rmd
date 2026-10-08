@@ -1,4 +1,4 @@
-# Taxonomic shares of Hill power sums {#shares}
+# Taxonomic shares and dissimilarity contributions {#shares}
 
 The [diversity](#diversity) and [pairwise beta diversity](#pairwise-beta)
 chapters describe whole communities. Here we use `hilldiv3::hillshare()` to
@@ -215,3 +215,96 @@ the allocation. The panel has no matched functional-distance matrix, so we
 restrict this example to neutral and phylogenetic shares. Habitat and
 sampling year are partly confounded; these figures do not establish a habitat
 effect.
+
+## Which phyla account for dissimilarity?
+
+The [pairwise analysis](#pairwise-beta) found strong neutral dissimilarity
+between wastewater and soil samples, with lower phylogenetic dissimilarity.
+To see which representatives contribute to that contrast, we compare the
+**mean abundance profiles** of agricultural field soil and urban wastewater
+water, calculated earlier from 45 samples per habitat. This is one comparison
+of two habitat mean vectors, not the median of the 2,025 individual sample
+pairs shown in the pairwise chapter.
+
+The same five disjoint genome sets used for `hillshare()` cover every
+representative. Here `hillcontrib()` attributes the $q=1$ C dissimilarity to
+those sets. A contribution is a part of the dissimilarity, whereas the
+earlier power-sum share describes one profile on its own.
+
+```{r contrib_inputs, include=FALSE}
+contrast_habitats <- c("Agricultural field soil", "Urban wastewater water")
+contrast_profiles <- habitat_profiles[, contrast_habitats, drop = FALSE]
+```
+
+```{r share_hillcontrib, message=FALSE, class.source='script-source hilldiv3-source'}
+contrib_neutral <- hilldiv3::hillcontrib(
+  contrast_profiles, q = 1, metric = "C", type = "neutral",
+  sets = share_sets
+)
+contrib_phylogenetic <- hilldiv3::hillcontrib(
+  contrast_profiles, q = 1, metric = "C", tree = genome_tree,
+  type = "phylogenetic", sets = share_sets
+)
+```
+
+```{r contrib_checks, include=FALSE, message=FALSE}
+contrast_neutral <- hilldiv3::hillpair(
+  contrast_profiles, q = 1, metric = "C", type = "neutral", out = "tibble"
+)
+contrast_phylogenetic <- hilldiv3::hillpair(
+  contrast_profiles, q = 1, metric = "C", tree = genome_tree,
+  type = "phylogenetic", out = "tibble"
+)
+stopifnot(
+  abs(sum(contrib_neutral$contribution) - contrast_neutral$value) < 1e-10,
+  abs(sum(contrib_phylogenetic$contribution) -
+        contrast_phylogenetic$value) < 1e-10,
+  abs(sum(contrib_neutral$share) - 1) < 1e-10,
+  abs(sum(contrib_phylogenetic$share) - 1) < 1e-10
+)
+contributions <- rbind(
+  transform(contrib_neutral, Type = "Neutral"),
+  transform(contrib_phylogenetic, Type = "Phylogenetic")
+)
+contributions$Type <- factor(contributions$Type,
+                             levels = c("Neutral", "Phylogenetic"))
+contributions$set <- factor(contributions$set, levels = names(share_sets))
+```
+
+```{r contrib_plot, fig.width=9, fig.height=4.2, fig.alt="Two stacked bars partition C dissimilarity between mean agricultural field soil and wastewater profiles across five phylum sets. Neutral dissimilarity is nearly one, while phylogenetic dissimilarity is about 0.52. Pseudomonadota has the largest contribution in both."}
+ggplot2::ggplot(contributions,
+                ggplot2::aes(x = Type, y = contribution, fill = set)) +
+  ggplot2::geom_col(width = 0.55) +
+  ggplot2::coord_flip() +
+  ggplot2::scale_y_continuous(
+    limits = c(0, 1), breaks = seq(0, 1, by = 0.25),
+    expand = ggplot2::expansion(mult = c(0, 0))
+  ) +
+  ggplot2::scale_fill_manual(values = c(
+    Pseudomonadota = "#702626", Actinomycetota = "#ca725c",
+    Acidobacteriota = "#d8b763", Bacteroidota = "#1b6b75",
+    Other = "#a6a6a6"
+  )) +
+  ggplot2::labs(x = NULL, y = "Contribution to C dissimilarity (q = 1)",
+                fill = "Representative set") +
+  ggplot2::theme_minimal(base_size = 11) +
+  ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
+```
+
+*The bar lengths are the C dissimilarities for the same two mean profiles;
+their segments sum to those values. They are not median contributions among
+sample pairs.*
+
+Neutral C dissimilarity is
+`r sprintf("%.3f", contrast_neutral$value)` and phylogenetic C dissimilarity is
+`r sprintf("%.3f", contrast_phylogenetic$value)`. Pseudomonadota accounts for
+`r sprintf("%.1f%%", 100 * contrib_neutral$share[contrib_neutral$set == "Pseudomonadota"])`
+of the neutral value and
+`r sprintf("%.1f%%", 100 * contrib_phylogenetic$share[contrib_phylogenetic$set == "Pseudomonadota"])`
+of the phylogenetic value. Although Bacteroidota has a prominent power-sum
+share within wastewater, it accounts for only
+`r sprintf("%.1f%%", 100 * contrib_neutral$share[contrib_neutral$set == "Bacteroidota"])`
+of this neutral dissimilarity. Turnover among representatives assigned to
+other phyla also matters. Phylogenetic attribution allocates shared branch
+turnover to descendant representatives under `hillcontrib()`'s specified rule;
+it is not a unique biological assignment of each branch to a phylum.
