@@ -87,7 +87,8 @@ code that formats their results.
 
 The [taxonomic shares](#shares) chapter uses `hillshare()` to allocate neutral
 and phylogenetic Hill power sums to four named phyla and the remaining
-representatives. Figures compare habitats, diversity orders, and the
-sample-level variation behind those summaries. It then uses `hillcontrib()`
-to attribute a focused agricultural field versus natural grassland soil
-dissimilarity to the same sets.
+representatives. A focused agricultural field versus natural grassland soil
+comparison shows how a nearly stable Actinomycetota share conceals opposing
+Gaiellales and Streptosporangiales patterns. `hillcontrib()` then attributes
+the same neutral and phylogenetic dissimilarities to the phyla and these
+orders.

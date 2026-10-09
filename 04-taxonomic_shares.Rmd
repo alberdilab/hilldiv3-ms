@@ -114,6 +114,173 @@ ggplot2::ggplot(share_medians,
 each set, so the displayed medians need not sum to one; the five shares sum to
 one within every individual sample, type, and order.*
 
+## A stable phylum total hides order turnover
+
+The broad habitat comparison in the [Microflora Danica
+atlas](https://doi.org/10.1038/s41586-025-09794-2) places fields and grasslands
+among similar soil environments. Its [supplementary genome
+analysis](https://media.springernature.com/original/springer-static/esm/art%3A10.1038%2Fs41586-025-09794-2/MediaObjects/41586_2025_9794_MOESM1_ESM.pdf)
+notes widespread *Gaiella* and a *Trebonia* species found in grasslands. We
+use the representative MAG profiles to ask whether similar abundance at the
+phylum level can conceal opposing changes among its members.
+
+For Actinomycetota, we define separate sets for Gaiellales and
+Streptosporangiales. These sets are disjoint; `Other` completes the partition.
+The parent phylum's share comes from the earlier `hillshare()` result. At
+neutral $q=1$, each share equals that set's summed abundance within the MFD
+MAG profile. The order names are taxonomic assignments, not functional
+annotations.
+
+```{r actino_order_sets, include=FALSE}
+actino_orders <- c("Gaiellales", "Streptosporangiales")
+actino_order_sets <- lapply(actino_orders, function(name) {
+  genome_metadata$genome_id[
+    phylum == "Actinomycetota" &
+      genome_metadata$order == paste0("o__", name)
+  ]
+})
+names(actino_order_sets) <- actino_orders
+actino_order_sets$Other <- setdiff(
+  genome_metadata$genome_id,
+  unlist(actino_order_sets, use.names = FALSE)
+)
+stopifnot(
+  all(lengths(actino_order_sets[actino_orders]) > 0L),
+  sum(lengths(actino_order_sets)) == nrow(genome_metadata),
+  setequal(unlist(actino_order_sets, use.names = FALSE),
+           genome_metadata$genome_id)
+)
+soil_samples <- sample_metadata$habitat_label %in% contrast_habitats
+```
+
+```{r actino_order_hillshare, message=FALSE, class.source='script-source hilldiv3-source'}
+actino_order_shares <- hilldiv3::hillshare(
+  overview_abundance[, soil_samples, drop = FALSE],
+  q = 1, type = "neutral", sets = actino_order_sets
+)
+```
+
+```{r actino_order_plot_data, include=FALSE}
+actino_order_shares$habitat <- sample_metadata$habitat_label[
+  match(actino_order_shares$sample, sample_metadata$sample_id)
+]
+actino_phylum_shares <- shares[
+  shares$set == "Actinomycetota" & shares$q == 1 &
+    shares$type == "neutral" & shares$habitat %in% contrast_habitats,
+]
+actino_plot_data <- rbind(
+  actino_phylum_shares[c("sample", "habitat", "set", "share")],
+  actino_order_shares[
+    actino_order_shares$set %in% actino_orders,
+    c("sample", "habitat", "set", "share")
+  ]
+)
+actino_plot_data$Taxon <- factor(
+  actino_plot_data$set,
+  levels = c("Actinomycetota", actino_orders),
+  labels = c("Actinomycetota (phylum)", actino_orders)
+)
+actino_plot_data$Habitat <- factor(
+  actino_plot_data$habitat, levels = contrast_habitats,
+  labels = c("Field soil", "Grassland soil")
+)
+actino_medians <- aggregate(
+  share ~ set + habitat, actino_plot_data, median
+)
+actino_median <- function(set, habitat) {
+  actino_medians$share[
+    actino_medians$set == set & actino_medians$habitat == habitat
+  ]
+}
+shared_project_samples <- sample_metadata$sample_id[
+  sample_metadata$project_id %in% c("P01_1", "P02_1") & soil_samples
+]
+actino_project <- actino_plot_data[
+  actino_plot_data$sample %in% shared_project_samples,
+]
+actino_project_means <- aggregate(
+  share ~ set + habitat, actino_project, mean
+)
+actino_project_mean <- function(set, habitat) {
+  actino_project_means$share[
+    actino_project_means$set == set &
+      actino_project_means$habitat == habitat
+  ]
+}
+stopifnot(
+  nrow(actino_plot_data) == 3L * 2L * 45L,
+  nrow(actino_medians) == 3L * 2L,
+  all(is.finite(actino_plot_data$share)),
+  !anyNA(actino_plot_data$Habitat),
+  sum(sample_metadata$project_id %in% c("P01_1", "P02_1") &
+        sample_metadata$habitat_label == contrast_habitats[1]) == 16L,
+  sum(sample_metadata$project_id %in% c("P01_1", "P02_1") &
+        sample_metadata$habitat_label == contrast_habitats[2]) == 7L,
+  actino_project_mean("Gaiellales", contrast_habitats[1]) >
+    actino_project_mean("Gaiellales", contrast_habitats[2]),
+  actino_project_mean("Streptosporangiales", contrast_habitats[1]) <
+    actino_project_mean("Streptosporangiales", contrast_habitats[2])
+)
+```
+
+```{r actino_order_plot, fig.width=10, fig.height=4.8, fig.alt="Boxplots and individual soil samples show nearly unchanged Actinomycetota shares between fields and grasslands, but higher Gaiellales shares in fields and higher Streptosporangiales shares in grasslands. Each taxon panel has its own percentage scale."}
+ggplot2::ggplot(actino_plot_data,
+                ggplot2::aes(x = Habitat, y = share, fill = Habitat)) +
+  ggplot2::geom_boxplot(outlier.shape = NA, width = 0.52,
+                        alpha = 0.55) +
+  ggplot2::geom_point(
+    position = ggplot2::position_jitter(width = 0.13, height = 0,
+                                        seed = 42),
+    size = 0.9, alpha = 0.4
+  ) +
+  ggplot2::scale_fill_manual(values = c("Field soil" = "#a52929",
+                                         "Grassland soil" = "#1b6b75")) +
+  ggplot2::scale_y_continuous(
+    labels = function(x) sprintf("%.0f%%", 100 * x),
+    expand = ggplot2::expansion(mult = c(0.03, 0.07))
+  ) +
+  ggplot2::facet_wrap(~ Taxon, nrow = 1, scales = "free_y") +
+  ggplot2::labs(x = NULL, y = "Neutral share (q = 1)") +
+  ggplot2::theme_minimal(base_size = 11) +
+  ggplot2::theme(
+    legend.position = "none",
+    panel.grid.minor = ggplot2::element_blank(),
+    strip.text = ggplot2::element_text(face = "bold")
+  )
+```
+
+*Each point is one sample; boxes show medians and interquartile ranges. The
+percentage scale differs between taxon panels. Shares are relative to the
+detected MFD MAG profile, not to all DNA in a sample.*
+
+The median Actinomycetota share is
+`r sprintf("%.1f%%", 100 * actino_median("Actinomycetota", contrast_habitats[1]))`
+in fields and
+`r sprintf("%.1f%%", 100 * actino_median("Actinomycetota", contrast_habitats[2]))`
+in grasslands. Within that nearly stable total, Gaiellales is
+`r sprintf("%.1f%%", 100 * actino_median("Gaiellales", contrast_habitats[1]))`
+versus
+`r sprintf("%.1f%%", 100 * actino_median("Gaiellales", contrast_habitats[2]))`,
+while Streptosporangiales is
+`r sprintf("%.1f%%", 100 * actino_median("Streptosporangiales", contrast_habitats[1]))`
+versus
+`r sprintf("%.1f%%", 100 * actino_median("Streptosporangiales", contrast_habitats[2]))`.
+The order distributions overlap, but their directions also appear when we
+restrict the panel to the two sampling projects containing both habitats
+(16 field and 7 grassland samples): the Gaiellales means are
+`r sprintf("%.1f%%", 100 * actino_project_mean("Gaiellales", contrast_habitats[1]))`
+and
+`r sprintf("%.1f%%", 100 * actino_project_mean("Gaiellales", contrast_habitats[2]))`,
+and the Streptosporangiales means are
+`r sprintf("%.1f%%", 100 * actino_project_mean("Streptosporangiales", contrast_habitats[1]))`
+and
+`r sprintf("%.1f%%", 100 * actino_project_mean("Streptosporangiales", contrast_habitats[2]))`,
+respectively. This subset is small and does not establish independence from
+sampling context. The pattern is a within-phylum compositional contrast, not
+a claim about the orders' ecological functions.
+
+## A contrasting phylum-level signal
+
 Thermoproteota has a higher $q=1$ share in field soil than in grassland soil.
 The next figure shows the sample-level values for both diversity types rather
 than only the habitat medians in the heatmap.
@@ -322,6 +489,131 @@ substantial contributions. Phylogenetic attribution allocates shared branch
 turnover to descendant representatives under `hillcontrib()`'s
 specified rule; it is not a unique biological assignment of each branch to a
 phylum.
+
+### The orders behind the Actinomycetota contribution
+
+The phylum totals above do not show which Actinomycetota representatives
+create the difference. We now partition the same two habitat mean profiles
+into Gaiellales, Streptosporangiales, the remaining Actinomycetota, and all
+representatives outside the phylum. The four sets are disjoint and exhaustive,
+so their C contributions sum to the corresponding whole-community values.
+
+```{r actino_contrib_sets, include=FALSE}
+actino_contrib_sets <- actino_order_sets[actino_orders]
+actino_contrib_sets$`Remaining Actinomycetota` <- setdiff(
+  share_sets$Actinomycetota,
+  unlist(actino_order_sets[actino_orders], use.names = FALSE)
+)
+actino_contrib_sets$`Outside Actinomycetota` <- setdiff(
+  genome_metadata$genome_id, share_sets$Actinomycetota
+)
+stopifnot(
+  sum(lengths(actino_contrib_sets)) == nrow(genome_metadata),
+  setequal(unlist(actino_contrib_sets, use.names = FALSE),
+           genome_metadata$genome_id)
+)
+```
+
+```{r actino_hillcontrib, message=FALSE, class.source='script-source hilldiv3-source'}
+actino_contrib_neutral <- hilldiv3::hillcontrib(
+  contrast_profiles, q = 1, metric = "C", type = "neutral",
+  sets = actino_contrib_sets
+)
+actino_contrib_phylogenetic <- hilldiv3::hillcontrib(
+  contrast_profiles, q = 1, metric = "C", tree = genome_tree,
+  type = "phylogenetic", sets = actino_contrib_sets
+)
+```
+
+```{r actino_contrib_plot_data, include=FALSE}
+actino_contrib <- rbind(
+  transform(actino_contrib_neutral, Type = "Neutral"),
+  transform(actino_contrib_phylogenetic, Type = "Phylogenetic")
+)
+actino_parent_contribution <- c(
+  Neutral = contrib_neutral$contribution[
+    contrib_neutral$set == "Actinomycetota"
+  ],
+  Phylogenetic = contrib_phylogenetic$contribution[
+    contrib_phylogenetic$set == "Actinomycetota"
+  ]
+)
+actino_orders_fraction <- function(d) {
+  sum(d$contribution[d$set %in% actino_orders]) /
+    sum(d$contribution[d$set != "Outside Actinomycetota"])
+}
+actino_total_fraction <- function(d) {
+  sum(d$contribution[d$set %in% actino_orders]) /
+    sum(d$contribution)
+}
+stopifnot(
+  abs(sum(actino_contrib_neutral$contribution) -
+        contrast_neutral$value) < 1e-10,
+  abs(sum(actino_contrib_phylogenetic$contribution) -
+        contrast_phylogenetic$value) < 1e-10,
+  abs(sum(actino_contrib_neutral$contribution[
+    actino_contrib_neutral$set != "Outside Actinomycetota"
+  ]) - actino_parent_contribution["Neutral"]) < 1e-10,
+  abs(sum(actino_contrib_phylogenetic$contribution[
+    actino_contrib_phylogenetic$set != "Outside Actinomycetota"
+  ]) - actino_parent_contribution["Phylogenetic"]) < 1e-10
+)
+actino_contrib_plot <- actino_contrib[
+  actino_contrib$set != "Outside Actinomycetota",
+]
+actino_contrib_plot$Fraction <- actino_contrib_plot$contribution /
+  actino_parent_contribution[actino_contrib_plot$Type]
+actino_contrib_plot$Type <- factor(
+  actino_contrib_plot$Type,
+  levels = c("Neutral", "Phylogenetic")
+)
+actino_contrib_plot$Set <- factor(
+  actino_contrib_plot$set,
+  levels = c(actino_orders, "Remaining Actinomycetota")
+)
+stopifnot(
+  max(abs(tapply(actino_contrib_plot$Fraction,
+                 actino_contrib_plot$Type, sum) - 1)) < 1e-10
+)
+```
+
+```{r actino_contrib_plot, fig.width=9, fig.height=3.8, fig.alt="Two stacked bars show how Gaiellales, Streptosporangiales, and the remaining Actinomycetota divide that phylum's contribution to neutral and phylogenetic order-one C dissimilarity. The first two orders together account for about half of the phylum contribution in both bars."}
+ggplot2::ggplot(actino_contrib_plot,
+                ggplot2::aes(x = Type, y = Fraction, fill = Set)) +
+  ggplot2::geom_col(width = 0.55) +
+  ggplot2::coord_flip() +
+  ggplot2::scale_y_continuous(
+    limits = c(0, 1), breaks = seq(0, 1, by = 0.25),
+    labels = function(x) sprintf("%.0f%%", 100 * x),
+    expand = ggplot2::expansion(mult = c(0, 0))
+  ) +
+  ggplot2::scale_fill_manual(values = c(
+    Gaiellales = "#9d2f30", Streptosporangiales = "#d4846e",
+    `Remaining Actinomycetota` = "#a6a6a6"
+  )) +
+  ggplot2::labs(x = NULL, y = "Share of Actinomycetota C contribution",
+                fill = "Representative set") +
+  ggplot2::theme_minimal(base_size = 11) +
+  ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
+```
+
+*The bars divide the Actinomycetota segment of the preceding figure, not the
+whole-community C value. Both use the same field and grassland mean profiles;
+these are not sample-pair medians.*
+
+Gaiellales and Streptosporangiales together account for
+`r sprintf("%.1f%%", 100 * actino_orders_fraction(actino_contrib_neutral))`
+of Actinomycetota's neutral contribution and
+`r sprintf("%.1f%%", 100 * actino_orders_fraction(actino_contrib_phylogenetic))`
+of its phylogenetic contribution. Relative to the full C values, these two
+orders account for
+`r sprintf("%.1f%%", 100 * actino_total_fraction(actino_contrib_neutral))`
+and
+`r sprintf("%.1f%%", 100 * actino_total_fraction(actino_contrib_phylogenetic))`,
+respectively. Thus the nearly unchanged phylum abundance does not imply that
+its constituent representatives are unchanged. The field and grassland
+samples differ in location, soil properties, sampling project, and year;
+these descriptive differences cannot be assigned to land management alone.
 
 ### How phylogenetic weighting redistributes contributions
 

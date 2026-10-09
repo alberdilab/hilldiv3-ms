@@ -30,6 +30,9 @@ sample-level-ordination
 shares
 define-the-genome-sets
 shares-across-habitats
+a-stable-phylum-total-hides-order-turnover
+a-contrasting-phylum-level-signal
 how-order-and-tree-weighting-change-a-share
 which-phyla-account-for-dissimilarity
+the-orders-behind-the-actinomycetota-contribution
 how-phylogenetic-weighting-redistributes-contributions
