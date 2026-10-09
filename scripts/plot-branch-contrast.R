@@ -3,9 +3,8 @@ branch_contrast_example <- function(contrast_profiles, genome_tree, sets,
                                     contrib_neutral,
                                     contrib_phylogenetic) {
   focus_clades <- list(
-    Actinomycetota = c("LIB-MJ151-D7_04.1", "LIB-MJ262-F7_03.4",
-                      "LIB-MJ171-G4_04.8",
-                      "LIB-MJ253-D2_01_v_LIB-MJ404-D6_03.4"),
+    Thermoproteota = c("LIB-MJ108-A4_02.6", "LIB-MJ352-H5_03.3",
+                       "LIB-MJ089-B8_02.7", "LIB-MJ301-E11_01.25"),
     Pseudomonadota = c("LIB-MJ402-A8_04.4", "LIB-MJ137-F1_02.2",
                        "LIB-MJ201-G3_03.8", "LIB-MJ342-D11_02.11")
   )
@@ -119,7 +118,7 @@ branch_contrast_example <- function(contrast_profiles, genome_tree, sets,
     100 * table$share[match(name, table$set)]
   }
   facet_labels <- vapply(names(parts), function(name) {
-    sprintf("%s   |   phylum share: %.1f%% neutral → %.1f%% phylogenetic",
+    sprintf("%s   |   share of C: %.1f%% neutral → %.1f%% phylogenetic",
             name, share(contrib_neutral, name),
             share(contrib_phylogenetic, name))
   }, character(1))
@@ -200,7 +199,7 @@ branch_contrast_example <- function(contrast_profiles, genome_tree, sets,
       low = "#d1d0cd", high = "#a52929",
       limits = c(0, max(horizontal$gap)),
       transform = scales::pseudo_log_trans(sigma = 0.01),
-      breaks = c(0, 0.1, 1, 3), labels = c("0", "0.1", "1", "3"),
+      breaks = c(0, 0.1, 0.5, 1), labels = c("0", "0.1", "0.5", "1"),
       name = expression(q == 1~"branch gap"~(x*10^{-4})),
       guide = ggplot2::guide_colourbar(
         barwidth = grid::unit(7, "cm"), ticks = TRUE)

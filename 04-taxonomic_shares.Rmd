@@ -12,16 +12,18 @@ This chapter was rendered with `hilldiv3` version
 
 ## Define the genome sets
 
-We use four phyla with contrasting profiles across the panel. The `Other`
-set contains every remaining representative, so the five sets are disjoint
-and exhaustive. Each representative stands for its published 95% ANI cluster;
-the shares describe those cluster profiles, not the abundance of every MAG
-within a cluster.
+We use four phyla that have substantial abundance or dissimilarity
+contributions in the field–grassland soil comparison. The `Other` set contains
+every remaining representative, so the five sets are disjoint and exhaustive.
+Each representative stands for its published 95% ANI cluster; the shares
+describe those cluster profiles, not the abundance of every MAG within a
+cluster.
 
 ```{r share_sets}
 phylum <- sub("^p__", "", genome_metadata$phylum)
 focus_phyla <- c("Pseudomonadota", "Actinomycetota",
-                  "Acidobacteriota", "Bacteroidota")
+                  "Acidobacteriota", "Thermoproteota")
+contrast_habitats <- c("Agricultural field soil", "Natural grassland soil")
 share_sets <- lapply(focus_phyla, function(name) {
   genome_metadata$genome_id[phylum == name]
 })
@@ -112,59 +114,63 @@ ggplot2::ggplot(share_medians,
 each set, so the displayed medians need not sum to one; the five shares sum to
 one within every individual sample, type, and order.*
 
-The selected phyla show different habitat patterns. Bacteroidota contributes
-little neutral $q=1$ weight in most soil samples but substantially more in
-saltwater sediment and wastewater. The next figure retains the sample-level
-values behind that contrast.
+Thermoproteota has a higher $q=1$ share in field soil than in grassland soil.
+The next figure shows the sample-level values for both diversity types rather
+than only the habitat medians in the heatmap.
 
-```{r share_bacteroidota_data, include=FALSE}
-bacteroidota <- shares[
-  shares$set == "Bacteroidota" & shares$type == "neutral" & shares$q == 1,
+```{r share_thermoproteota_data, include=FALSE}
+thermoproteota <- shares[
+  shares$set == "Thermoproteota" & shares$q == 1 &
+    shares$habitat %in% contrast_habitats,
 ]
-bacteroidota$habitat <- factor(bacteroidota$habitat,
-                               levels = rev(habitat_levels))
-stopifnot(nrow(bacteroidota) == nrow(sample_metadata))
+thermoproteota$habitat <- factor(thermoproteota$habitat,
+                                levels = rev(contrast_habitats))
+thermoproteota$Type <- factor(thermoproteota$type,
+                              levels = c("neutral", "phylogenetic"),
+                              labels = c("Neutral", "Phylogenetic"))
+stopifnot(nrow(thermoproteota) == 2L * 45L * length(contrast_habitats))
 ```
 
-```{r share_bacteroidota, fig.width=10, fig.height=5.8, fig.alt="Boxplots and individual sample points show the neutral order-one Bacteroidota power-sum share in each of eight habitats."}
-ggplot2::ggplot(bacteroidota,
+```{r share_thermoproteota, fig.width=10, fig.height=4.5, fig.alt="Boxplots and individual samples compare order-one Thermoproteota power-sum shares in agricultural field and natural grassland soils, with neutral and phylogenetic panels on the same scale."}
+ggplot2::ggplot(thermoproteota,
                 ggplot2::aes(x = share, y = habitat)) +
   ggplot2::geom_boxplot(outlier.shape = NA, width = 0.55,
                         fill = "#e6c7c7", colour = "#702626") +
   ggplot2::geom_jitter(height = 0.13, width = 0, alpha = 0.4,
                        size = 0.8, colour = "#702626") +
+  ggplot2::facet_wrap(~ Type, nrow = 1) +
   ggplot2::scale_x_continuous(
     labels = function(x) sprintf("%.0f%%", 100 * x),
+    breaks = seq(0, 0.4, by = 0.1),
     expand = ggplot2::expansion(mult = c(0, 0.03))
   ) +
-  ggplot2::labs(x = "Bacteroidota share, neutral q = 1", y = NULL) +
+  ggplot2::labs(x = "Thermoproteota share (q = 1)", y = NULL) +
   ggplot2::theme_minimal(base_size = 11) +
-  ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
+  ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                 strip.text = ggplot2::element_text(face = "bold"))
 ```
 
-*Each point is one sample; boxes show medians and interquartile ranges. A zero
-means no representative from this phylum was detected in that sample.*
+*Each point is one sample; boxes show medians and interquartile ranges. The
+panels share an abundance scale. A zero means no representative from this
+phylum was detected in that sample.*
 
-The median Bacteroidota share is
-`r sprintf("%.1f%%", 100 * median(bacteroidota$share[bacteroidota$habitat == "Urban wastewater water"]))`
-in wastewater and
-`r sprintf("%.1f%%", 100 * median(bacteroidota$share[bacteroidota$habitat == "Natural saltwater sediment"]))`
-in saltwater sediment. It is zero in agricultural field soil, where the phylum
-is detected in only
-`r sum(bacteroidota$share[bacteroidota$habitat == "Agricultural field soil"] > 0)`
-of 45 selected samples.
+The median neutral Thermoproteota share is
+`r sprintf("%.1f%%", 100 * median(thermoproteota$share[thermoproteota$type == "neutral" & thermoproteota$habitat == contrast_habitats[1]]))`
+in field soil and
+`r sprintf("%.1f%%", 100 * median(thermoproteota$share[thermoproteota$type == "neutral" & thermoproteota$habitat == contrast_habitats[2]]))`
+in grassland soil. The distributions overlap, and these unpaired samples do
+not establish a land-use effect.
 
 ## How order and tree weighting change a share
 
 For Pseudomonadota, the next plot compares sample medians and interquartile
-ranges across orders in four habitats. The lines connect summaries, not
+ranges across orders in four soil habitats. The lines connect summaries, not
 individual samples. A shared vertical scale makes both diversity types
 directly visible.
 
 ```{r share_order_data, include=FALSE}
 share_profile_habitats <- c(
-  "Urban greenspace soil", "Natural forest soil",
-  "Natural freshwater sediment", "Urban wastewater water"
+  contrast_habitats, "Urban greenspace soil", "Natural forest soil"
 )
 pseudomonadota <- data.table::as.data.table(shares[
   shares$set == "Pseudomonadota" &
@@ -234,8 +240,16 @@ those sets. A contribution is a part of the dissimilarity, whereas the
 earlier power-sum share describes one profile on its own.
 
 ```{r contrib_inputs, include=FALSE}
-contrast_habitats <- c("Agricultural field soil", "Natural grassland soil")
 contrast_profiles <- habitat_profiles[, contrast_habitats, drop = FALSE]
+nitrososphaerales_ids <- genome_metadata$genome_id[
+  phylum == "Thermoproteota" &
+    genome_metadata$order == "o__Nitrososphaerales"
+]
+nitrososphaerales_fraction <- colSums(
+  contrast_profiles[nitrososphaerales_ids, , drop = FALSE]
+) / colSums(contrast_profiles[share_sets$Thermoproteota, , drop = FALSE])
+stopifnot(length(nitrososphaerales_ids) > 0L,
+          all(nitrososphaerales_fraction > 0.99))
 ```
 
 ```{r share_hillcontrib, message=FALSE, class.source='script-source hilldiv3-source'}
@@ -284,7 +298,7 @@ ggplot2::ggplot(contributions,
   ) +
   ggplot2::scale_fill_manual(values = c(
     Pseudomonadota = "#702626", Actinomycetota = "#ca725c",
-    Acidobacteriota = "#d8b763", Bacteroidota = "#1b6b75",
+    Acidobacteriota = "#d8b763", Thermoproteota = "#1b6b75",
     Other = "#a6a6a6"
   )) +
   ggplot2::labs(x = NULL, y = "Contribution to C dissimilarity (q = 1)",
@@ -303,23 +317,31 @@ Neutral C dissimilarity is
 `r sprintf("%.1f%%", 100 * contrib_neutral$share[contrib_neutral$set == "Actinomycetota"])`
 of the neutral value and
 `r sprintf("%.1f%%", 100 * contrib_phylogenetic$share[contrib_phylogenetic$set == "Actinomycetota"])`
-of the phylogenetic value. Pseudomonadota and the remaining representatives
-also make substantial contributions. Phylogenetic attribution allocates shared
-branch turnover to descendant representatives under `hillcontrib()`'s
+of the phylogenetic value. Pseudomonadota and Thermoproteota also make
+substantial contributions. Phylogenetic attribution allocates shared branch
+turnover to descendant representatives under `hillcontrib()`'s
 specified rule; it is not a unique biological assignment of each branch to a
 phylum.
 
 ### How phylogenetic weighting redistributes contributions
 
-Pseudomonadota accounts for
+Thermoproteota accounts for
+`r sprintf("%.1f%%", 100 * contrib_neutral$share[contrib_neutral$set == "Thermoproteota"])`
+of the neutral C value and
+`r sprintf("%.1f%%", 100 * contrib_phylogenetic$share[contrib_phylogenetic$set == "Thermoproteota"])`
+of the phylogenetic value. Pseudomonadota moves in the opposite direction,
+from
 `r sprintf("%.1f%%", 100 * contrib_neutral$share[contrib_neutral$set == "Pseudomonadota"])`
-of the neutral C value but
+to
 `r sprintf("%.1f%%", 100 * contrib_phylogenetic$share[contrib_phylogenetic$set == "Pseudomonadota"])`
-of the phylogenetic value. Actinomycetota's corresponding shares are
-`r sprintf("%.1f%%", 100 * contrib_neutral$share[contrib_neutral$set == "Actinomycetota"])`
+of the phylogenetic value. Representatives assigned to Nitrososphaerales make
+up
+`r sprintf("%.1f%%", 100 * nitrososphaerales_fraction[1])`
 and
-`r sprintf("%.1f%%", 100 * contrib_phylogenetic$share[contrib_phylogenetic$set == "Actinomycetota"])`.
-These are descriptive shares of two different C values; no significance test
+`r sprintf("%.1f%%", 100 * nitrososphaerales_fraction[2])`
+of Thermoproteota abundance in the field and grassland mean profiles,
+respectively. That is a taxonomic assignment, not a measurement of function.
+The contribution shares describe two different C values; no significance test
 is involved. The figure shows one small clade from each phylum on the same
 branch-gap colour scale. The nonlinear colour mapping keeps smaller nonzero
 gaps visible; the legend reports the original gap values.
@@ -333,8 +355,11 @@ branch_contrast <- branch_contrast_example(
 stopifnot(
   abs(sum(branch_contrast$branch_gap) / log(2) -
         contrast_phylogenetic$value) < 1e-10,
-  branch_contrast$stem_gap["Actinomycetota"] >
-    5 * branch_contrast$stem_gap["Pseudomonadota"]
+  sum(branch_contrast$branch_gap[
+    branch_contrast$focus_edges$Thermoproteota
+  ]) > 3 * sum(branch_contrast$branch_gap[
+    branch_contrast$focus_edges$Pseudomonadota
+  ])
 )
 dir.create("figures", showWarnings = FALSE)
 ggplot2::ggsave("figures/branch-contrast.png",
@@ -342,15 +367,16 @@ ggplot2::ggsave("figures/branch-contrast.png",
                 dpi = 192)
 ```
 
-```{r branch_contrast_plot, echo=FALSE, fig.width=10.5, fig.height=7.3, fig.alt="Four-tip clades from Actinomycetota and Pseudomonadota on the same branch-gap colour scale for the agricultural field versus natural grassland soil comparison. The selected Actinomycetota clade has a larger stem gap than the selected Pseudomonadota clade. Field and grassland clade totals and phylum-wide contribution shares are shown."}
+```{r branch_contrast_plot, echo=FALSE, fig.width=10.5, fig.height=7.3, fig.alt="Four-tip clades from Thermoproteota and Pseudomonadota on the same branch-gap colour scale for the agricultural field versus natural grassland soil comparison. The selected Thermoproteota clade, assigned to Nitrososphaerales, has a larger combined branch gap than the selected Pseudomonadota clade. Field and grassland clade totals and phylum-wide contribution shares are shown."}
 print(branch_contrast$plot)
 ```
 
 *Each panel shows a separate four-MAG clade in the source tree. Horizontal
 branches are drawn to scale and coloured by the same length-weighted $q=1$
 abundance-gap scale, with nonlinear colour spacing; grey vertical lines
-connect them. The selected Actinomycetota clade has a larger shared-stem gap
-than the selected Pseudomonadota clade in this comparison. The shares
-in the panel headings come from all representatives and branches in each
+connect them. All four Thermoproteota representatives shown are assigned to
+Nitrososphaerales, and their clade has a larger combined branch gap than the
+selected Pseudomonadota clade. The shares in the panel headings come from all
+representatives and branches in each
 phylum; these selected clades illustrate the contrast but do not alone
 determine the phylum-wide percentages.*
