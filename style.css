@@ -1,6 +1,11 @@
-p.caption {
-  color: #777;
-  margin-top: 10px;
+p.caption,
+p:has(> img[role="img"]) + p:has(> em:only-child) {
+  color: #666;
+  font-size: 0.9em;
+  line-height: 1.45;
+  border-left: 3px solid #a52929;
+  padding: 4px 0 4px 12px;
+  margin: 10px 0 22px;
 }
 p code {
   white-space: inherit;

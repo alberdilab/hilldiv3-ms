@@ -89,4 +89,5 @@ The [taxonomic shares](#shares) chapter uses `hillshare()` to allocate neutral
 and phylogenetic Hill power sums to four named phyla and the remaining
 representatives. Figures compare habitats, diversity orders, and the
 sample-level variation behind those summaries. It then uses `hillcontrib()`
-to attribute a focused soil–wastewater dissimilarity to the same sets.
+to attribute a focused agricultural field versus natural grassland soil
+dissimilarity to the same sets.

@@ -218,13 +218,15 @@ effect.
 
 ## Which phyla account for dissimilarity?
 
-The [pairwise analysis](#pairwise-beta) found strong neutral dissimilarity
-between wastewater and soil samples, with lower phylogenetic dissimilarity.
-To see which representatives contribute to that contrast, we compare the
-**mean abundance profiles** of agricultural field soil and urban wastewater
-water, calculated earlier from 45 samples per habitat. This is one comparison
-of two habitat mean vectors, not the median of the 2,025 individual sample
-pairs shown in the pairwise chapter.
+We compare the **mean abundance profiles** of agricultural field soil and
+natural grassland soil, calculated earlier from 45 samples per habitat. Both
+are soils, but the source metadata classify one as agricultural and the other
+as natural. This gives the contribution analysis an ecological land-use
+question with a shared sample matrix. It is one comparison of two habitat mean
+vectors, not the median of the 2,025 individual sample pairs shown in the
+[pairwise analysis](#pairwise-beta). The samples are not matched on soil
+properties, vegetation, location, or sampling year, so this descriptive
+contrast cannot isolate an effect of human land use.
 
 The same five disjoint genome sets used for `hillshare()` cover every
 representative. Here `hillcontrib()` attributes the $q=1$ C dissimilarity to
@@ -232,7 +234,7 @@ those sets. A contribution is a part of the dissimilarity, whereas the
 earlier power-sum share describes one profile on its own.
 
 ```{r contrib_inputs, include=FALSE}
-contrast_habitats <- c("Agricultural field soil", "Urban wastewater water")
+contrast_habitats <- c("Agricultural field soil", "Natural grassland soil")
 contrast_profiles <- habitat_profiles[, contrast_habitats, drop = FALSE]
 ```
 
@@ -271,13 +273,13 @@ contributions$Type <- factor(contributions$Type,
 contributions$set <- factor(contributions$set, levels = names(share_sets))
 ```
 
-```{r contrib_plot, fig.width=9, fig.height=4.2, fig.alt="Two stacked bars partition C dissimilarity between mean agricultural field soil and wastewater profiles across five phylum sets. Neutral dissimilarity is nearly one, while phylogenetic dissimilarity is about 0.52. Pseudomonadota has the largest contribution in both."}
+```{r contrib_plot, fig.width=9, fig.height=4.2, fig.alt="Two stacked bars partition order-one C dissimilarity between mean agricultural field and natural grassland soil profiles across five representative sets. Neutral dissimilarity is about 0.29 and phylogenetic dissimilarity about 0.05. Actinomycetota contributes the most to both values."}
 ggplot2::ggplot(contributions,
                 ggplot2::aes(x = Type, y = contribution, fill = set)) +
   ggplot2::geom_col(width = 0.55) +
   ggplot2::coord_flip() +
   ggplot2::scale_y_continuous(
-    limits = c(0, 1), breaks = seq(0, 1, by = 0.25),
+    limits = c(0, 0.3), breaks = seq(0, 0.3, by = 0.1),
     expand = ggplot2::expansion(mult = c(0, 0))
   ) +
   ggplot2::scale_fill_manual(values = c(
@@ -297,14 +299,58 @@ sample pairs.*
 
 Neutral C dissimilarity is
 `r sprintf("%.3f", contrast_neutral$value)` and phylogenetic C dissimilarity is
-`r sprintf("%.3f", contrast_phylogenetic$value)`. Pseudomonadota accounts for
-`r sprintf("%.1f%%", 100 * contrib_neutral$share[contrib_neutral$set == "Pseudomonadota"])`
+`r sprintf("%.3f", contrast_phylogenetic$value)`. Actinomycetota accounts for
+`r sprintf("%.1f%%", 100 * contrib_neutral$share[contrib_neutral$set == "Actinomycetota"])`
 of the neutral value and
+`r sprintf("%.1f%%", 100 * contrib_phylogenetic$share[contrib_phylogenetic$set == "Actinomycetota"])`
+of the phylogenetic value. Pseudomonadota and the remaining representatives
+also make substantial contributions. Phylogenetic attribution allocates shared
+branch turnover to descendant representatives under `hillcontrib()`'s
+specified rule; it is not a unique biological assignment of each branch to a
+phylum.
+
+### How phylogenetic weighting redistributes contributions
+
+Pseudomonadota accounts for
+`r sprintf("%.1f%%", 100 * contrib_neutral$share[contrib_neutral$set == "Pseudomonadota"])`
+of the neutral C value but
 `r sprintf("%.1f%%", 100 * contrib_phylogenetic$share[contrib_phylogenetic$set == "Pseudomonadota"])`
-of the phylogenetic value. Although Bacteroidota has a prominent power-sum
-share within wastewater, it accounts for only
-`r sprintf("%.1f%%", 100 * contrib_neutral$share[contrib_neutral$set == "Bacteroidota"])`
-of this neutral dissimilarity. Turnover among representatives assigned to
-other phyla also matters. Phylogenetic attribution allocates shared branch
-turnover to descendant representatives under `hillcontrib()`'s specified rule;
-it is not a unique biological assignment of each branch to a phylum.
+of the phylogenetic value. Actinomycetota's corresponding shares are
+`r sprintf("%.1f%%", 100 * contrib_neutral$share[contrib_neutral$set == "Actinomycetota"])`
+and
+`r sprintf("%.1f%%", 100 * contrib_phylogenetic$share[contrib_phylogenetic$set == "Actinomycetota"])`.
+These are descriptive shares of two different C values; no significance test
+is involved. The figure shows one small clade from each phylum on the same
+branch-gap colour scale. The nonlinear colour mapping keeps smaller nonzero
+gaps visible; the legend reports the original gap values.
+
+```{r branch_contrast_data, include=FALSE}
+source("scripts/plot-branch-contrast.R")
+branch_contrast <- branch_contrast_example(
+  contrast_profiles, genome_tree, share_sets,
+  contrib_neutral, contrib_phylogenetic
+)
+stopifnot(
+  abs(sum(branch_contrast$branch_gap) / log(2) -
+        contrast_phylogenetic$value) < 1e-10,
+  branch_contrast$stem_gap["Actinomycetota"] >
+    5 * branch_contrast$stem_gap["Pseudomonadota"]
+)
+dir.create("figures", showWarnings = FALSE)
+ggplot2::ggsave("figures/branch-contrast.png",
+                plot = branch_contrast$plot, width = 10.5, height = 7.3,
+                dpi = 192)
+```
+
+```{r branch_contrast_plot, echo=FALSE, fig.width=10.5, fig.height=7.3, fig.alt="Four-tip clades from Actinomycetota and Pseudomonadota on the same branch-gap colour scale for the agricultural field versus natural grassland soil comparison. The selected Actinomycetota clade has a larger stem gap than the selected Pseudomonadota clade. Field and grassland clade totals and phylum-wide contribution shares are shown."}
+print(branch_contrast$plot)
+```
+
+*Each panel shows a separate four-MAG clade in the source tree. Horizontal
+branches are drawn to scale and coloured by the same length-weighted $q=1$
+abundance-gap scale, with nonlinear colour spacing; grey vertical lines
+connect them. The selected Actinomycetota clade has a larger shared-stem gap
+than the selected Pseudomonadota clade in this comparison. The shares
+in the panel headings come from all representatives and branches in each
+phylum; these selected clades illustrate the contrast but do not alone
+determine the phylum-wide percentages.*

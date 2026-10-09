@@ -8,8 +8,8 @@ analyses, diversity profiles across orders, and pairwise beta diversity
 comparisons. It also allocates Hill power-sum shares to taxonomic sets with
 `hillshare()`. Its `hilldiv3` calls are highlighted separately from the plotting
 and tabulation code. A focused `hillcontrib()` comparison attributes
-soil–wastewater dissimilarity to the same taxonomic sets. Functional
-annotations remain for a later stage.
+agricultural field versus natural grassland soil dissimilarity to the same
+taxonomic sets. Functional annotations remain for a later stage.
 
 ## Bookdown publication
 
