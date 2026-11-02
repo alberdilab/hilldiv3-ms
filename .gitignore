@@ -17,3 +17,14 @@ _main.md
 
 sources/*
 !sources/.gitkeep
+
+# Codeome agent jobs
+.codeome/jobs/
+.codeome/worktrees/
+.codeome/plans/
+
+# Codeome agent jobs
+.codeome/context/
+
+# figure caches
+data/cache/
