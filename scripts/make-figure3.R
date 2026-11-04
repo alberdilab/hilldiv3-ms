@@ -100,7 +100,7 @@ pA <- ggplot() +
   geom_polygon(data = denmark, aes(long, lat, group = group),
                fill = "#f0eeeb", colour = "#a9aaa8", linewidth = 0.2) +
   geom_point(data = d, aes(longitude, latitude, colour = Habitat), size = 0.8, alpha = 0.85, stroke = 0) +
-  scale_colour_manual(values = hab_cols, name = "Habitat (panels a, c-e)") +
+  scale_colour_manual(values = hab_cols, name = "Habitat (panels a, c, d)") +
   guides(colour = guide_legend(override.aes = list(size = 1.8, alpha = 1))) +
   # x range extended eastwards so that the shared habitat legend sits beside the map
   coord_quickmap(xlim = c(7.9, 19.2), ylim = c(54.5, 57.8), expand = FALSE) +
@@ -224,9 +224,10 @@ actino$Habitat <- factor(actino$habitat, levels = contrast_habitats, labels = c(
 stopifnot(nrow(actino) == 3L * 2L * 45L, !anyNA(actino$Habitat))
 actino_medians <- aggregate(share ~ set + habitat, actino, median)
 print(actino_medians)
-e_cols <- c(Field = unname(hab_cols["Field soil"]), Grassland = unname(hab_cols["Grassland soil"]))
+# Actinomycetota colour of panel f (field: full colour, grassland: lighter tint of the same hue).
+e_cols <- c(Field = unname(phylum_cols["Actinomycetota"]), Grassland = "#EFE7BC")
 pE <- ggplot(actino, aes(Habitat, share, fill = Habitat)) +
-  geom_boxplot(outlier.shape = NA, width = 0.55, alpha = 0.55, linewidth = 0.25,
+  geom_boxplot(outlier.shape = NA, width = 0.55, linewidth = 0.25,
                median.linewidth = 0.4) +
   geom_point(position = position_jitter(width = 0.13, height = 0, seed = 42),
              size = 0.35, alpha = 0.5, stroke = 0) +

@@ -7,7 +7,7 @@ derived from multiplicative Hill beta diversity. It ranges from zero for
 identical communities to one for no overlap. We calculate neutral and
 phylogenetic values at $q=0$, $q=1$, and $q=2$ using the same representative
 profiles and tree as above. Each type and order has
-`r choose(ncol(overview_abundance), 2)` unique sample pairs.
+`r format(choose(ncol(overview_abundance), 2), big.mark = ",", scientific = FALSE)` unique sample pairs.
 
 The two `hillpair()` calls return one row per sample pair and order. We request
 the long-format result so the sample IDs can be joined to their habitats.

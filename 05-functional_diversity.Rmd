@@ -1,0 +1,872 @@
+# Functional diversity {#functional-diversity}
+
+The previous chapters used abundances and a phylogeny. Here we add the
+functional layer: genome-inferred traits distilled from KEGG ortholog
+annotations of the same 5,518 representative MAGs. Each MAG has a completeness
+score between zero and one for every function-level trait in the
+[distillR](https://github.com/anttonalberdi/distillR) biosynthesis and
+degradation domains, such as nucleic acid biosynthesis or polysaccharide
+degradation. We turn these traits into a functional distance between MAGs and
+use it in [hilldiv3](https://alberdilab.github.io/hilldiv3/) to calculate
+functional diversity and related metrics.
+
+```{r functional_setup, include=FALSE}
+stopifnot(requireNamespace("distillR", quietly = TRUE),
+          requireNamespace("cluster", quietly = TRUE),
+          identical(rownames(overview_abundance), genome_metadata$genome_id),
+          identical(colnames(overview_abundance), sample_metadata$sample_id))
+
+plain_result <- function(x) {
+  class(x) <- "data.frame"
+  x
+}
+```
+
+## Functional traits
+
+`scripts/distill-functional-traits.R` distils the primary KEGG ortholog hit of
+every gene (Drakkar 2.6.9, KOfam database of 2026-07-02) into trait tables. We
+use the function level, which has one column per function and the same row
+order as the representative metadata.
+
+```{r functional_traits, message=FALSE}
+functional_traits <- data.table::fread(
+  cmd = "xz -dc data/mag_gift_functions.tsv.xz",
+  data.table = FALSE, check.names = FALSE
+)
+stopifnot(identical(functional_traits$genome_id, genome_metadata$genome_id))
+rownames(functional_traits) <- functional_traits$genome_id
+functional_traits$genome_id <- NULL
+
+# Protein degradation is defined by MEROPS peptidase families, which KEGG
+# annotation cannot supply, so it is zero in every MAG and carries no signal.
+empty_functions <- colnames(functional_traits)[colSums(functional_traits) == 0]
+functional_traits <- functional_traits[, !colnames(functional_traits) %in%
+                                         empty_functions, drop = FALSE]
+stopifnot(identical(empty_functions, "D04"),
+          all(as.matrix(functional_traits) >= 0 &
+                as.matrix(functional_traits) <= 1))
+
+function_labels <- unique(distillR::GIFT_db[c("Code_function", "Function",
+                                              "Domain")])
+function_labels <- function_labels[match(colnames(functional_traits),
+                                         function_labels$Code_function), ]
+stopifnot(!anyNA(function_labels$Function))
+cat(sprintf("%d MAGs, %d function-level traits (%d biosynthesis, %d degradation).\n",
+            nrow(functional_traits), ncol(functional_traits),
+            sum(function_labels$Domain == "Biosynthesis"),
+            sum(function_labels$Domain == "Degradation")))
+```
+
+## Functional distance
+
+`traits2dist()` converts the trait table to a Gower distance, the mean absolute
+difference in completeness across traits, scaled to the range of each trait.
+Two MAGs with identical traits are at distance zero.
+
+```{r functional_distance, class.source='script-source hilldiv3-source'}
+functional_dist <- hilldiv3::traits2dist(functional_traits, method = "gower")
+```
+
+```{r functional_distance_summary}
+stopifnot(identical(dim(functional_dist), c(5518L, 5518L)),
+          all(is.finite(functional_dist)))
+dimnames(functional_dist) <- list(genome_metadata$genome_id,
+                                  genome_metadata$genome_id)
+pair_distance <- functional_dist[upper.tri(functional_dist)]
+distance_quantiles <- stats::quantile(pair_distance,
+                                      c(0.01, 0.25, 0.5, 0.75, 0.99, 1))
+knitr::kable(
+  data.frame(Statistic = c("1%", "25%", "Median", "75%", "99%", "Maximum"),
+             Distance = unname(distance_quantiles)),
+  digits = 3
+)
+```
+
+*Quantiles of the pairwise functional distance between the 5,518
+representatives.*
+
+Functional Hill numbers count the effective number of functionally distinct
+types in a sample. Two MAGs closer than a threshold $\tau$ count as largely the
+same type. We set $\tau$ to the mean pairwise distance,
+`r sprintf("%.2f", mean(pair_distance))`, and examine how sensitive the results
+are to this choice below.
+
+```{r functional_tau}
+functional_tau <- mean(pair_distance)
+```
+
+## Functional diversity within samples
+
+We calculate neutral and functional Hill numbers at $q=0$, $q=1$ and $q=2$ from
+the same abundances. A `dist` supplied with `type = "functional"` adds the
+functional layer.
+
+```{r functional_alpha_hilldiv, message=FALSE, class.source='script-source hilldiv3-source'}
+fd_neutral <- hilldiv3::hilldiv(
+  overview_abundance, q = c(0, 1, 2), type = "neutral"
+)
+fd_functional <- hilldiv3::hilldiv(
+  overview_abundance, q = c(0, 1, 2), dist = functional_dist,
+  tau = functional_tau, type = "functional"
+)
+```
+
+```{r functional_alpha_data, include=FALSE}
+fd_neutral <- plain_result(fd_neutral)
+fd_functional <- plain_result(fd_functional)
+fd_neutral$type <- "Neutral"
+fd_functional$type <- "Functional"
+fd_alpha <- rbind(fd_neutral, fd_functional)
+fd_alpha$habitat <- sample_metadata$habitat_label[
+  match(fd_alpha$sample, sample_metadata$sample_id)
+]
+stopifnot(!anyNA(fd_alpha$habitat), all(is.finite(fd_alpha$value)),
+          all(fd_alpha$value > 0))
+fd_alpha$habitat <- factor(fd_alpha$habitat, levels = rev(habitat_levels))
+fd_alpha$type <- factor(fd_alpha$type, levels = c("Neutral", "Functional"))
+fd_alpha$order <- factor(fd_alpha$q, levels = c(0, 1, 2),
+                         labels = c("q = 0", "q = 1", "q = 2"))
+```
+
+```{r functional_alpha_plot, fig.width=11, fig.height=7.5, fig.alt="Boxplots and sample points for neutral and functional Hill diversity at orders 0, 1, and 2 across eight habitats."}
+ggplot2::ggplot(fd_alpha, ggplot2::aes(x = value, y = habitat)) +
+  ggplot2::geom_boxplot(outlier.shape = NA, width = 0.55,
+                        fill = "#c9d8e8", colour = "#1f4e79") +
+  ggplot2::geom_jitter(height = 0.13, width = 0, alpha = 0.28,
+                       size = 0.65, colour = "#1f4e79") +
+  ggplot2::facet_wrap(ggplot2::vars(type, order), ncol = 3,
+                      scales = "free_x") +
+  ggplot2::labs(x = "Hill diversity", y = NULL) +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                 strip.text = ggplot2::element_text(face = "bold"))
+```
+
+*Neutral and functional Hill numbers for 45 samples in each habitat class.
+Horizontal scales differ by panel.*
+
+```{r functional_alpha_summary}
+fd_q1 <- fd_alpha[fd_alpha$q == 1, ]
+fd_wide <- reshape(
+  fd_q1[c("sample", "habitat", "type", "value")], idvar = c("sample", "habitat"),
+  timevar = "type", direction = "wide"
+)
+names(fd_wide) <- sub("value\\.", "", names(fd_wide))
+fd_wide$Redundancy <- fd_wide$Neutral / fd_wide$Functional
+fd_summary <- function(x) {
+  sprintf("%.1f [%.1f–%.1f]", median(x), unname(quantile(x, 0.25)),
+          unname(quantile(x, 0.75)))
+}
+fd_table <- data.frame(
+  Habitat = habitat_levels,
+  Neutral = tapply(fd_wide$Neutral, fd_wide$habitat, fd_summary)[habitat_levels],
+  Functional = tapply(fd_wide$Functional, fd_wide$habitat,
+                      fd_summary)[habitat_levels],
+  Redundancy = tapply(fd_wide$Redundancy, fd_wide$habitat,
+                      fd_summary)[habitat_levels]
+)
+rownames(fd_table) <- NULL
+knitr::kable(fd_table, col.names = c("Habitat", "Neutral q = 1",
+                                     "Functional q = 1",
+                                     "Functional redundancy"))
+```
+
+*Median [interquartile range] of $q=1$ diversity by habitat. Functional
+redundancy is neutral divided by functional diversity: the number of effective
+MAGs per effective functional type.*
+
+```{r functional_alpha_interpretation, echo=FALSE, results='asis'}
+fd_medians <- tapply(fd_wide$Functional, fd_wide$habitat, median)
+cat(sprintf(
+  "At $q=1$, median functional diversity ranges from %.1f in %s to %.1f in %s, while neutral diversity ranges from %.0f to %.0f effective MAGs.\n\n",
+  min(fd_medians), names(which.min(fd_medians)),
+  max(fd_medians), names(which.max(fd_medians)),
+  min(tapply(fd_wide$Neutral, fd_wide$habitat, median)),
+  max(tapply(fd_wide$Neutral, fd_wide$habitat, median))
+))
+```
+
+## Sensitivity to the distance threshold
+
+Functional Hill numbers depend on $\tau$. A small $\tau$ treats nearly every
+MAG as distinct and approaches neutral diversity; a large $\tau$ merges them
+into a few functional types. We repeat the $q=1$ calculation across a range of
+thresholds.
+
+```{r functional_tau_sensitivity, message=FALSE, class.source='script-source hilldiv3-source'}
+tau_values <- sort(unique(c(0.1, 0.15, functional_tau, 0.3, 0.4)))
+tau_results <- lapply(tau_values, function(tau) {
+  res <- plain_result(hilldiv3::hilldiv(
+    overview_abundance, q = 1, dist = functional_dist, tau = tau,
+    type = "functional"
+  ))
+  res$tau <- tau
+  res
+})
+```
+
+```{r functional_tau_plot, fig.width=9, fig.height=5.5, fig.alt="Median functional Hill diversity at order one against the distance threshold, one line per habitat."}
+tau_data <- do.call(rbind, tau_results)
+tau_data$habitat <- sample_metadata$habitat_label[
+  match(tau_data$sample, sample_metadata$sample_id)
+]
+stopifnot(!anyNA(tau_data$habitat), all(is.finite(tau_data$value)))
+tau_median <- aggregate(value ~ habitat + tau, data = tau_data, FUN = median)
+tau_median$habitat <- factor(tau_median$habitat, levels = habitat_levels)
+ggplot2::ggplot(tau_median,
+                ggplot2::aes(x = tau, y = value, colour = habitat)) +
+  ggplot2::geom_line(linewidth = 0.7) +
+  ggplot2::geom_point(size = 1.2) +
+  ggplot2::geom_vline(xintercept = functional_tau, linetype = "dashed",
+                      colour = "grey40") +
+  ggplot2::scale_colour_manual(values = grDevices::hcl.colors(
+    length(habitat_levels), palette = "Dark 3")) +
+  ggplot2::scale_y_log10() +
+  ggplot2::labs(x = expression("Distance threshold" ~ tau),
+                y = "Median functional Hill diversity, q = 1 (log scale)",
+                colour = "Habitat") +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
+```
+
+*Median functional diversity per habitat across thresholds. The dashed line is
+the mean pairwise distance used elsewhere in this chapter.*
+
+```{r functional_tau_interpretation, echo=FALSE, results='asis'}
+rank_by_tau <- vapply(tau_values, function(tau) {
+  d <- tau_median[tau_median$tau == tau, ]
+  as.character(d$habitat[which.max(d$value)])
+}, "")
+cat(sprintf(
+  "The habitat with the highest median functional diversity is %s at %s of the %d thresholds tested.\n\n",
+  names(sort(table(rank_by_tau), decreasing = TRUE))[1],
+  max(table(rank_by_tau)), length(tau_values)
+))
+```
+
+## Community-level trait profiles
+
+The abundance-weighted mean completeness of each function in a sample, the
+community-weighted mean (CWM), describes the average functional capacity of the
+community without any threshold. It weights each MAG by its relative abundance
+within the profile.
+
+```{r functional_cwm}
+relative_profiles <- sweep(overview_abundance, 2, colSums(overview_abundance),
+                           "/")
+cwm <- t(relative_profiles) %*% as.matrix(functional_traits)
+stopifnot(identical(rownames(cwm), sample_metadata$sample_id),
+          all(cwm >= -1e-10 & cwm <= 1 + 1e-10))
+cwm_habitat <- aggregate(as.data.frame(cwm),
+                         by = list(habitat = sample_metadata$habitat_label),
+                         FUN = mean)
+cwm_long <- reshape(
+  cwm_habitat, direction = "long", idvar = "habitat",
+  varying = colnames(cwm), v.names = "cwm", timevar = "code",
+  times = colnames(cwm)
+)
+cwm_long$label <- paste(cwm_long$code,
+                        function_labels$Function[match(cwm_long$code,
+                                                       function_labels$Code_function)])
+cwm_long$domain <- function_labels$Domain[match(cwm_long$code,
+                                                function_labels$Code_function)]
+cwm_long$habitat <- factor(cwm_long$habitat, levels = habitat_levels)
+```
+
+```{r functional_cwm_plot, fig.width=10, fig.height=8, fig.alt="Heat map of habitat mean community-weighted trait completeness for each function, split into biosynthesis and degradation."}
+ggplot2::ggplot(cwm_long, ggplot2::aes(x = habitat, y = label, fill = cwm)) +
+  ggplot2::geom_tile(colour = "white") +
+  ggplot2::geom_text(ggplot2::aes(label = sprintf("%.2f", cwm)), size = 2.6) +
+  ggplot2::facet_grid(rows = ggplot2::vars(domain), scales = "free_y",
+                      space = "free_y") +
+  ggplot2::scale_fill_gradient(low = "#ffffff", high = "#c9784a",
+                               limits = c(0, 1)) +
+  ggplot2::scale_x_discrete(guide = ggplot2::guide_axis(angle = 35)) +
+  ggplot2::labs(x = NULL, y = NULL, fill = "Mean CWM\ncompleteness") +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(panel.grid = ggplot2::element_blank(),
+                 strip.text = ggplot2::element_text(face = "bold"))
+```
+
+*Mean community-weighted completeness of each function across the 45 samples of
+a habitat. Values range from zero (no MAG carries the function) to one (the
+community is dominated by MAGs with the complete function).*
+
+```{r functional_cwm_interpretation, echo=FALSE, results='asis'}
+cwm_range <- tapply(cwm_long$cwm, cwm_long$label,
+                    function(v) max(v) - min(v))
+top_label <- names(which.max(cwm_range))
+top_rows <- cwm_long[cwm_long$label == top_label, ]
+cat(sprintf(
+  "The function that differs most between habitats is %s, from %.2f in %s to %.2f in %s.\n\n",
+  top_label, min(top_rows$cwm), top_rows$habitat[which.min(top_rows$cwm)],
+  max(top_rows$cwm), top_rows$habitat[which.max(top_rows$cwm)]
+))
+```
+
+## Partitioning functional diversity
+
+`hillpart()` partitions functional diversity across samples, habitat classes
+and the full panel, as for neutral and phylogenetic diversity in the
+[diversity chapter](#diversity).
+
+```{r functional_hillpart, message=FALSE, class.source='script-source hilldiv3-source'}
+functional_metadata <- data.frame(
+  habitat_class = sample_metadata$habitat_class,
+  row.names = sample_metadata$sample_id
+)
+partition_functional <- hilldiv3::hillpart(
+  overview_abundance, q = c(0, 1, 2), dist = functional_dist,
+  tau = functional_tau, hierarchy = ~ habitat_class,
+  metadata = functional_metadata, type = "functional"
+)
+```
+
+```{r functional_partition_table}
+partition_functional <- plain_result(partition_functional)
+stopifnot(all(is.finite(partition_functional$diversity)))
+f_within <- partition_functional[partition_functional$scale == "habitat_class",
+                                 c("q", "beta")]
+f_total <- partition_functional[partition_functional$scale == "total",
+                                c("q", "beta", "diversity")]
+f_alpha <- partition_functional[partition_functional$scale == "sample",
+                                c("q", "diversity")]
+names(f_alpha)[2] <- "Alpha diversity"
+names(f_within)[2] <- "Within habitats"
+names(f_total)[2:3] <- c("Between habitats", "Gamma diversity")
+partition_functional_table <- Reduce(function(a, b) merge(a, b, by = "q"),
+                                     list(f_alpha, f_within, f_total))
+knitr::kable(partition_functional_table, digits = 2)
+```
+
+*Hierarchical partition of functional Hill numbers. Beta factors describe
+sample-to-habitat and habitat-to-panel turnover.*
+
+At $q=1$ the functional beta factors are
+`r sprintf("%.2f", partition_functional_table[["Within habitats"]][partition_functional_table$q == 1])`
+from samples to habitats and
+`r sprintf("%.2f", partition_functional_table[["Between habitats"]][partition_functional_table$q == 1])`
+from habitats to the full panel. These are much closer to one than the
+neutral and phylogenetic factors: communities in different habitats consist of
+different MAGs but carry largely overlapping functions.
+
+## Pairwise functional dissimilarity
+
+`hillpair()` compares every pair of samples, using the functional layer. As in
+the [pairwise chapter](#pairwise-beta), we use the C dissimilarity, here at
+$q=1$.
+
+```{r functional_hillpair, message=FALSE, class.source='script-source hilldiv3-source'}
+pair_functional <- hilldiv3::hillpair(
+  overview_abundance, q = 1, metric = "C", dist = functional_dist,
+  tau = functional_tau, type = "functional", out = "tibble"
+)
+```
+
+```{r functional_pair_setup}
+pair_functional <- plain_result(pair_functional)
+fd_ids <- sample_metadata$sample_id
+fd_first <- match(pair_functional$first, fd_ids)
+fd_second <- match(pair_functional$second, fd_ids)
+stopifnot(nrow(pair_functional) == choose(length(fd_ids), 2L),
+          !anyNA(fd_first), !anyNA(fd_second), all(fd_first < fd_second),
+          all(is.finite(pair_functional$value)),
+          all(pair_functional$value >= -1e-10 &
+                pair_functional$value <= 1 + 1e-10))
+pair_functional$comparison <- ifelse(
+  sample_metadata$habitat_label[fd_first] ==
+    sample_metadata$habitat_label[fd_second],
+  "Within habitat", "Between habitats"
+)
+pair_summary <- aggregate(
+  value ~ comparison, data = pair_functional,
+  FUN = function(x) sprintf("%.2f [%.2f–%.2f]", median(x),
+                            unname(quantile(x, 0.25)),
+                            unname(quantile(x, 0.75)))
+)
+knitr::kable(pair_summary, col.names = c("Pairs", "Functional C, q = 1"),
+             row.names = FALSE)
+```
+
+*Median [interquartile range] of functional C dissimilarity. Zero means
+identical functional communities and one means no functional overlap.*
+
+```{r functional_ordination_data, include=FALSE}
+fd_dist_matrix <- matrix(0, length(fd_ids), length(fd_ids),
+                         dimnames = list(fd_ids, fd_ids))
+fd_dist_matrix[cbind(fd_first, fd_second)] <- pair_functional$value
+fd_dist_matrix[cbind(fd_second, fd_first)] <- pair_functional$value
+fd_ord <- stats::cmdscale(stats::as.dist(fd_dist_matrix), k = 2, eig = TRUE,
+                          add = TRUE)
+fd_variance <- 100 * fd_ord$eig[1:2] / sum(pmax(fd_ord$eig, 0))
+fd_points <- data.frame(
+  sample_id = fd_ids,
+  habitat = factor(sample_metadata$habitat_label, levels = habitat_levels),
+  PCoA1 = fd_ord$points[, 1], PCoA2 = fd_ord$points[, 2]
+)
+stopifnot(all(is.finite(fd_ord$points)))
+```
+
+```{r functional_ordination, fig.width=8, fig.height=6.5, fig.alt="Principal coordinates plot of functional C dissimilarity at order one among 360 samples, coloured by habitat."}
+ggplot2::ggplot(fd_points,
+                ggplot2::aes(x = PCoA1, y = PCoA2, colour = habitat)) +
+  ggplot2::geom_point(alpha = 0.75, size = 1.5) +
+  ggplot2::scale_colour_manual(values = grDevices::hcl.colors(
+    length(habitat_levels), palette = "Dark 3")) +
+  ggplot2::labs(x = sprintf("PCoA 1 (%.1f%%)", fd_variance[1]),
+                y = sprintf("PCoA 2 (%.1f%%)", fd_variance[2]),
+                colour = "Habitat") +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
+```
+
+*Each point is one sample. Axis percentages are the shares of positive
+eigenvalues after the Cailliez correction.*
+
+## Functional view of the Actinomycetota turnover
+
+The [shares chapter](#shares) found a nearly stable Actinomycetota total in
+agricultural field and natural grassland soils, with more Gaiellales in fields
+and more Streptosporangiales in grasslands. Do these two orders carry different
+functions, so that the swap changes what the community can do? We answer at the
+finer **element** level, such as individual amino acids, sugars or vitamins,
+which resolves more than the 17 function-level traits above.
+
+```{r actino_functional_setup, message=FALSE}
+element_traits <- data.table::fread(
+  cmd = "xz -dc data/mag_gift_elements.tsv.xz",
+  data.table = FALSE, check.names = FALSE
+)
+stopifnot(identical(element_traits$genome_id, genome_metadata$genome_id))
+rownames(element_traits) <- element_traits$genome_id
+element_traits$genome_id <- NULL
+element_traits <- element_traits[, colSums(element_traits) > 0, drop = FALSE]
+element_matrix <- as.matrix(element_traits)
+
+element_labels <- unique(distillR::GIFT_db[c("Code_element", "Element",
+                                             "Function")])
+element_labels <- element_labels[match(colnames(element_matrix),
+                                       element_labels$Code_element), ]
+element_labels$label <- sprintf("%s %s (%s)", element_labels$Code_element,
+                                element_labels$Element,
+                                tolower(element_labels$Function))
+stopifnot(!anyNA(element_labels$Element))
+
+element_dist <- hilldiv3::traits2dist(element_traits, method = "gower")
+dimnames(element_dist) <- list(genome_metadata$genome_id,
+                               genome_metadata$genome_id)
+element_tau <- mean(element_dist[upper.tri(element_dist)])
+```
+
+`traits2dist()` now uses the `r ncol(element_matrix)` of 170 elements that are
+present in at least one MAG (the others, including the protein-degradation
+elements, are absent from every MAG). We again set $\tau$ to the mean pairwise
+distance,
+`r sprintf("%.2f", element_tau)`.
+
+The four disjoint sets are the two orders, the remaining Actinomycetota, and
+everything outside the phylum. They cover all representatives, so contributions
+add up to the total. We compare the mean field and grassland profiles, as in
+the dissimilarity analysis of the shares chapter.
+
+```{r actino_functional_sets}
+actino_ids <- genome_metadata$genome_id[phylum == "Actinomycetota"]
+fa_sets <- lapply(actino_orders, function(name) {
+  actino_ids[genome_metadata[match(actino_ids, genome_metadata$genome_id),
+                             "order"] == paste0("o__", name)]
+})
+names(fa_sets) <- actino_orders
+fa_sets[["Remaining Actinomycetota"]] <- setdiff(actino_ids,
+                                                 unlist(fa_sets))
+fa_sets[["Outside Actinomycetota"]] <- setdiff(genome_metadata$genome_id,
+                                               actino_ids)
+stopifnot(all(lengths(fa_sets) > 0L),
+          sum(lengths(fa_sets)) == nrow(genome_metadata),
+          setequal(unlist(fa_sets, use.names = FALSE),
+                   genome_metadata$genome_id))
+
+fa_profiles <- function(field, grassland) {
+  out <- cbind(rowMeans(overview_abundance[, field, drop = FALSE]),
+               rowMeans(overview_abundance[, grassland, drop = FALSE]))
+  colnames(out) <- contrast_habitats
+  out
+}
+fa_field <- sample_metadata$habitat_label == contrast_habitats[1]
+fa_grass <- sample_metadata$habitat_label == contrast_habitats[2]
+fa_matched <- sample_metadata$project_id %in% c("P01_1", "P02_1")
+```
+
+### Functional dissimilarity and the contribution of each set
+
+`hillcontrib()` splits the $q=1$ C dissimilarity between the two mean profiles
+into contributions from each set. Neutral dissimilarity uses abundances alone;
+functional dissimilarity adds the element distance, so MAGs with similar
+elements count as the same functional type.
+
+```{r actino_functional_contrib, message=FALSE, class.source='script-source hilldiv3-source'}
+fa_mean <- fa_profiles(fa_field, fa_grass)
+fa_neutral <- hilldiv3::hillcontrib(
+  fa_mean, q = 1, metric = "C", type = "neutral", sets = fa_sets
+)
+fa_functional <- hilldiv3::hillcontrib(
+  fa_mean, q = 1, metric = "C", dist = element_dist, tau = element_tau,
+  type = "functional", sets = fa_sets
+)
+```
+
+```{r actino_functional_summary, include=FALSE}
+fa_neutral <- plain_result(fa_neutral)
+fa_functional <- plain_result(fa_functional)
+fa_orders_share <- function(x) {
+  sum(x$share[x$set %in% actino_orders])
+}
+
+# Element-level split of the field-minus-grassland difference in
+# community-weighted mean completeness; it sums exactly across sets.
+fa_decompose <- function(profiles, sets = fa_sets) {
+  weights <- sweep(profiles, 2, colSums(profiles), "/")
+  delta <- weights[, 1] - weights[, 2]
+  by_set <- vapply(sets, function(ids) {
+    drop(crossprod(delta[ids], element_matrix[ids, , drop = FALSE]))
+  }, numeric(ncol(element_matrix)))
+  rownames(by_set) <- colnames(element_matrix)
+  by_set
+}
+
+fa_check <- function(label, field, grassland, tau,
+                     keep = rep(TRUE, nrow(genome_metadata))) {
+  # MAGs outside `keep` get zero abundance and leave their sets.
+  profiles <- fa_profiles(field, grassland)
+  profiles[!keep, ] <- 0
+  sets <- lapply(fa_sets, function(ids) {
+    ids[keep[match(ids, genome_metadata$genome_id)]]
+  })
+  neutral <- plain_result(hilldiv3::hillcontrib(
+    profiles, q = 1, metric = "C", type = "neutral", sets = sets
+  ))
+  functional <- plain_result(hilldiv3::hillcontrib(
+    profiles, q = 1, metric = "C", dist = element_dist, tau = tau,
+    type = "functional", sets = sets
+  ))
+  by_set <- fa_decompose(profiles, sets)
+  g <- by_set[, "Gaiellales"]
+  s <- by_set[, "Streptosporangiales"]
+  data.frame(
+    Comparison = label,
+    neutral = sum(neutral$contribution),
+    functional = sum(functional$contribution),
+    share_neutral = fa_orders_share(neutral),
+    share_functional = fa_orders_share(functional),
+    correlation = stats::cor(g, s),
+    offset = (sum(abs(g)) + sum(abs(s))) / sum(abs(g + s))
+  )
+}
+# MAGs with CheckM2 completeness of at least 80% and contamination of at most
+# 10%; incomplete MAGs lower trait completeness for technical reasons.
+quality_keep <- genome_metadata$checkm2_completeness >= 80 &
+  genome_metadata$checkm2_contamination <= 10
+fa_robust <- rbind(
+  fa_check("All samples, mean tau", fa_field, fa_grass, element_tau),
+  fa_check("All samples, tau = 0.10", fa_field, fa_grass, 0.1),
+  fa_check("All samples, tau = 0.40", fa_field, fa_grass, 0.4),
+  fa_check("Project-matched samples, mean tau", fa_field & fa_matched,
+           fa_grass & fa_matched, element_tau),
+  fa_check("Higher-quality MAGs only, mean tau", fa_field, fa_grass,
+           element_tau, keep = quality_keep)
+)
+stopifnot(
+  sum(fa_field & fa_matched) == 16L, sum(fa_grass & fa_matched) == 7L,
+  all(is.finite(as.matrix(fa_robust[-1]))),
+  all(fa_robust$share_functional > fa_robust$share_neutral),
+  all(fa_robust$correlation < 0), all(fa_robust$offset > 1)
+)
+```
+
+```{r actino_functional_contrib_plot, fig.width=9, fig.height=3.8, fig.alt="Two stacked bars divide neutral and functional C dissimilarity between mean agricultural field and natural grassland soil profiles among Gaiellales, Streptosporangiales, the remaining Actinomycetota and everything outside the phylum."}
+fa_plot <- rbind(
+  data.frame(type = "Neutral", fa_neutral[c("set", "share")]),
+  data.frame(type = "Functional (elements)", fa_functional[c("set", "share")])
+)
+fa_plot$set <- factor(fa_plot$set, levels = rev(c(
+  actino_orders, "Remaining Actinomycetota", "Outside Actinomycetota"
+)))
+fa_plot$type <- factor(fa_plot$type,
+                       levels = c("Neutral", "Functional (elements)"))
+ggplot2::ggplot(fa_plot, ggplot2::aes(x = share, y = type, fill = set)) +
+  ggplot2::geom_col(width = 0.6, colour = "white") +
+  ggplot2::scale_fill_manual(values = c(
+    Gaiellales = "#9d2f30", Streptosporangiales = "#d4846e",
+    `Remaining Actinomycetota` = "#a6a6a6",
+    `Outside Actinomycetota` = "#e6dcd0"
+  ), breaks = c(actino_orders, "Remaining Actinomycetota",
+                "Outside Actinomycetota")) +
+  ggplot2::scale_x_continuous(labels = scales::label_percent()) +
+  ggplot2::labs(x = "Share of C dissimilarity", y = NULL, fill = NULL) +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                 legend.position = "bottom")
+```
+
+*Share of the $q=1$ C dissimilarity between mean field and grassland profiles
+attributed to each set, for abundance alone (neutral) and with the element
+distance (functional).*
+
+Neutral C between the two mean profiles is
+`r sprintf("%.3f", fa_robust$neutral[1])`, while functional C is only
+`r sprintf("%.3f", fa_robust$functional[1])` at this threshold: most of the
+abundance turnover replaces MAGs with similar elements. Gaiellales and Streptosporangiales hold
+only
+`r sprintf("%.1f%%", 100 * sum(lengths(fa_sets[actino_orders])) / nrow(genome_metadata))`
+of the representatives, yet they account for
+`r sprintf("%.0f%%", 100 * fa_robust$share_neutral[1])`
+of the neutral and
+`r sprintf("%.0f%%", 100 * fa_robust$share_functional[1])`
+of the functional dissimilarity. The two orders therefore explain a larger part
+of the functional turnover than of the abundance turnover.
+
+```{r actino_functional_robust_table}
+fa_robust_table <- data.frame(
+  fa_robust$Comparison,
+  sprintf("%.3f", fa_robust$neutral),
+  sprintf("%.3f", fa_robust$functional),
+  sprintf("%.0f%%", 100 * fa_robust$share_neutral),
+  sprintf("%.0f%%", 100 * fa_robust$share_functional)
+)
+knitr::kable(fa_robust_table, col.names = c(
+  "Comparison", "Neutral C", "Functional C",
+  "Orders' share of neutral C", "Orders' share of functional C"
+))
+```
+
+*Functional dissimilarity depends on $\tau$ (a small threshold approaches the
+neutral value, a large one removes it), so it is shown for three thresholds,
+for the 16 field and 7 grassland samples that share projects, as in the shares
+chapter, and for MAGs with CheckM2 completeness of at least 80% and
+contamination of at most 10%. The orders' larger share of functional
+dissimilarity holds in every row, but its margin is smallest among the
+higher-quality MAGs.*
+
+### Do the two orders offset each other?
+
+For each element we split the field-minus-grassland difference in
+community-weighted mean completeness into the part contributed by each set.
+Positive values mean higher completeness in fields. If the swap between orders
+left the community's functions unchanged, Gaiellales and Streptosporangiales
+would contribute opposite amounts for every element.
+
+```{r actino_functional_decomposition}
+fa_by_set <- fa_decompose(fa_mean)
+fa_elements <- data.frame(
+  code = rownames(fa_by_set), fa_by_set, check.names = FALSE,
+  label = element_labels$label[match(rownames(fa_by_set),
+                                     element_labels$Code_element)]
+)
+fa_elements$orders <- fa_elements$Gaiellales + fa_elements$Streptosporangiales
+fa_elements$total <- rowSums(fa_by_set)
+stopifnot(!anyNA(fa_elements$label))
+fa_top <- fa_elements[order(-abs(fa_elements$orders)), ][1:12, ]
+```
+
+```{r actino_functional_scatter, fig.width=7, fig.height=6, fig.alt="Scatter plot of the Gaiellales contribution against the Streptosporangiales contribution to the field-minus-grassland difference in mean element completeness; points lie along a descending line."}
+ggplot2::ggplot(fa_elements,
+                ggplot2::aes(x = Gaiellales, y = Streptosporangiales)) +
+  ggplot2::geom_hline(yintercept = 0, colour = "grey70") +
+  ggplot2::geom_vline(xintercept = 0, colour = "grey70") +
+  ggplot2::geom_abline(slope = -1, intercept = 0, linetype = "dashed",
+                       colour = "grey40") +
+  ggplot2::geom_point(colour = "#702626", alpha = 0.7, size = 1.6) +
+  ggplot2::labs(x = "Gaiellales contribution",
+                y = "Streptosporangiales contribution") +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
+```
+
+*Each point is one element. The dashed line marks complete offset: the two
+orders contribute equal and opposite amounts.*
+
+The contributions of the two orders are negatively correlated across the
+`r nrow(fa_elements)` elements (r = `r sprintf("%.2f", fa_robust$correlation[1])`).
+Summed over elements, their absolute contributions are
+`r sprintf("%.1f", fa_robust$offset[1])` times larger than the absolute
+contribution of the two orders combined, so most of what one order adds is
+cancelled by the other. The offset is partial: the two orders together still
+shift the completeness of individual elements.
+
+```{r actino_functional_top_plot, fig.width=9, fig.height=5.5, fig.alt="For the twelve elements with the largest combined effect of the two orders, bars show the Gaiellales and Streptosporangiales contributions to the field-minus-grassland difference in mean completeness and a point shows their sum."}
+fa_top_long <- rbind(
+  data.frame(label = fa_top$label, set = "Gaiellales",
+             value = fa_top$Gaiellales),
+  data.frame(label = fa_top$label, set = "Streptosporangiales",
+             value = fa_top$Streptosporangiales)
+)
+fa_top_long$label <- factor(fa_top_long$label, levels = rev(fa_top$label))
+fa_top$label <- factor(fa_top$label, levels = rev(fa_top$label))
+ggplot2::ggplot(fa_top_long, ggplot2::aes(x = value, y = label)) +
+  ggplot2::geom_vline(xintercept = 0, colour = "grey70") +
+  ggplot2::geom_col(ggplot2::aes(fill = set), position = "dodge",
+                    width = 0.7) +
+  ggplot2::geom_point(data = fa_top, ggplot2::aes(x = orders, y = label),
+                      shape = 18, size = 3) +
+  ggplot2::scale_fill_manual(values = c(Gaiellales = "#9d2f30",
+                                        Streptosporangiales = "#d4846e")) +
+  ggplot2::labs(x = "Contribution to field minus grassland mean completeness",
+                y = NULL, fill = NULL) +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(panel.grid.minor = ggplot2::element_blank(),
+                 legend.position = "bottom")
+```
+
+*The twelve elements with the largest net effect of the two orders. Bars are the
+contribution of each order; the diamond is their sum.*
+
+```{r actino_functional_top_text, echo=FALSE, results='asis'}
+lead <- fa_top[1, ]
+cat(sprintf(
+  "The largest net effect is for %s: Gaiellales contributes %+.3f and Streptosporangiales %+.3f, so the orders together shift it by %+.3f.\n\n",
+  lead$label, lead$Gaiellales, lead$Streptosporangiales, lead$orders
+))
+```
+
+Of these `r nrow(fa_top)` elements,
+`r sum(grepl("^D", fa_top$code) & fa_top$Streptosporangiales < 0)` are
+degradation elements for which Streptosporangiales, enriched in grasslands,
+raises grassland completeness. The replacement of Gaiellales by
+Streptosporangiales is therefore not functionally neutral at the level of
+individual elements, even though the overall functional dissimilarity is small.
+
+## Trait validation and sensitivity to MAG quality
+
+Before relying on the traits we check that they behave as expected for clades
+whose metabolism is well known, and that the main results do not simply track
+how complete a MAG is.
+
+```{r functional_validation}
+validation_phyla <- names(which(table(phylum) >= 60L))
+validation_codes <- c("B01", "B02", "B07", "D02")
+validation <- t(vapply(validation_phyla, function(name) {
+  colMeans(functional_traits[phylum == name, validation_codes])
+}, numeric(length(validation_codes))))
+validation <- validation[order(-validation[, "D02"]), ]
+antibiotic_max <- max(vapply(validation_phyla, function(name) {
+  mean(functional_traits[phylum == name, "B10"])
+}, numeric(1)))
+stopifnot(antibiotic_max < 0.05)
+colnames(validation) <- function_labels$Function[
+  match(validation_codes, function_labels$Code_function)
+]
+knitr::kable(validation, digits = 2)
+```
+
+*Mean completeness of four functions among the phyla with at least 60
+representatives.*
+
+The patterns match expectations. Patescibacteria, whose reduced genomes depend
+on other cells, score near zero for amino acid
+(`r sprintf("%.2f", validation["Patescibacteria", "Amino acid biosynthesis"])`)
+and vitamin
+(`r sprintf("%.2f", validation["Patescibacteria", "Vitamin biosynthesis"])`)
+biosynthesis, and well below the other phyla for nucleic acids
+(`r sprintf("%.2f", validation["Patescibacteria", "Nucleic acid biosynthesis"])`
+against at least
+`r sprintf("%.2f", min(validation[rownames(validation) != "Patescibacteria", "Nucleic acid biosynthesis"]))`).
+Polysaccharide degradation is highest in
+`r paste(head(rownames(validation), 3), collapse = ", ")`, groups known for
+degrading complex carbohydrates, and lowest in
+`r tail(rownames(validation), 1)`. KEGG orthologs do not resolve antibiotic
+biosynthesis: it stays below 0.05 in every phylum, including the Actinomycetota.
+
+```{r functional_quality, message=FALSE}
+trait_cors <- vapply(c("genome_size", "checkm2_completeness"), function(v) {
+  stats::median(abs(vapply(colnames(functional_traits), function(f) {
+    stats::cor(functional_traits[[f]], genome_metadata[[v]],
+               method = "spearman")
+  }, numeric(1))))
+}, numeric(1))
+```
+
+Trait completeness rises with genome size and CheckM2 completeness: the
+median absolute Spearman correlation across the 17 functions is
+`r sprintf("%.2f", trait_cors["genome_size"])` with genome size and
+`r sprintf("%.2f", trait_cors["checkm2_completeness"])` with completeness.
+Larger genomes do carry more metabolic functions, but incomplete MAGs also
+miss genes, so trait values are lower bounds. To see whether the conclusions
+depend on this, we repeat the analyses with the
+`r sum(quality_keep)` representatives that have CheckM2 completeness of at
+least 80% and contamination of at most 10%, renormalizing each profile.
+
+```{r functional_quality_alpha, message=FALSE, class.source='script-source hilldiv3-source'}
+quality_profiles <- overview_abundance[quality_keep, , drop = FALSE]
+quality_profiles <- sweep(quality_profiles, 2, colSums(quality_profiles), "/")
+quality_dist <- functional_dist[quality_keep, quality_keep]
+quality_functional <- hilldiv3::hilldiv(
+  quality_profiles, q = 1, dist = quality_dist,
+  tau = mean(quality_dist[upper.tri(quality_dist)]), type = "functional"
+)
+```
+
+```{r functional_quality_summary}
+quality_functional <- plain_result(quality_functional)
+quality_medians <- tapply(
+  quality_functional$value,
+  sample_metadata$habitat_label[match(quality_functional$sample,
+                                      sample_metadata$sample_id)],
+  median
+)[habitat_levels]
+all_medians <- tapply(fd_wide$Functional, fd_wide$habitat,
+                      median)[habitat_levels]
+quality_cwm <- t(quality_profiles) %*%
+  as.matrix(functional_traits[quality_keep, ])
+cwm_agreement <- vapply(colnames(cwm), function(f) {
+  stats::cor(tapply(cwm[, f], sample_metadata$habitat_label,
+                    mean)[habitat_levels],
+             tapply(quality_cwm[, f], sample_metadata$habitat_label,
+                    mean)[habitat_levels], method = "spearman")
+}, numeric(1))
+knitr::kable(
+  data.frame(Habitat = habitat_levels,
+             `All MAGs` = unname(all_medians),
+             `Higher-quality MAGs` = unname(quality_medians),
+             check.names = FALSE),
+  digits = 2
+)
+```
+
+*Median functional diversity ($q=1$) per habitat with all representatives and
+with the higher-quality subset. Each uses its own mean pairwise distance as
+$\tau$.*
+
+```{r functional_quality_interpretation, echo=FALSE, results='asis'}
+cat(sprintf(
+  "The subset holds a median of %.0f%% of each sample's profile. Absolute functional diversity is lower, but the habitat ranking is similar (Spearman %.2f) and %s remains highest. The habitat means of the community-weighted trait profiles agree between the two sets (median Spearman %.2f across functions, minimum %.2f).\n\n",
+  100 * median(colSums(overview_abundance[quality_keep, , drop = FALSE])),
+  stats::cor(all_medians, quality_medians, method = "spearman"),
+  names(which.max(quality_medians)), median(cwm_agreement),
+  min(cwm_agreement)
+))
+```
+
+Within the Actinomycetota analysis, the higher-quality row of the robustness
+table keeps the negative correlation between the orders
+(r = `r sprintf("%.2f", fa_robust$correlation[nrow(fa_robust)])`) and a small
+functional dissimilarity, but the orders' share of functional dissimilarity
+falls to
+`r sprintf("%.0f%%", 100 * fa_robust$share_functional[nrow(fa_robust)])`
+against
+`r sprintf("%.0f%%", 100 * fa_robust$share_neutral[nrow(fa_robust)])`
+neutral. We therefore read that excess as a modest, not a large, effect.
+
+## Interpretation and limits
+
+These traits come from gene presence in KEGG ortholog annotations. They
+describe genomic potential, not expressed activity, and cover only functions
+that KEGG orthologs and EC numbers can define. Protein degradation, which needs
+MEROPS peptidase families, is left out. Each representative's abundance stands
+for its 95% ANI cluster, which need not share its gene content.
+
+Functional diversity depends on the trait set and on $\tau$; compare values
+only within one choice of both. The pairwise and ordination summaries describe
+this selected panel. Pairs sharing samples are dependent, and habitat class is
+partly confounded with sampling year, so none of these comparisons is a formal
+test of a habitat effect. Relative abundances also cannot support read-count
+rarefaction or sampling-depth uncertainty estimates.

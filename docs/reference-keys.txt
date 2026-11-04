@@ -36,3 +36,16 @@ how-order-and-tree-weighting-change-a-share
 which-phyla-account-for-dissimilarity
 the-orders-behind-the-actinomycetota-contribution
 how-phylogenetic-weighting-redistributes-contributions
+functional-diversity
+functional-traits
+functional-distance
+functional-diversity-within-samples
+sensitivity-to-the-distance-threshold
+community-level-trait-profiles
+partitioning-functional-diversity
+pairwise-functional-dissimilarity
+functional-view-of-the-actinomycetota-turnover
+functional-dissimilarity-and-the-contribution-of-each-set
+do-the-two-orders-offset-each-other
+trait-validation-and-sensitivity-to-mag-quality
+interpretation-and-limits

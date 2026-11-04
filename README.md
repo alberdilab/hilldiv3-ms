@@ -11,7 +11,9 @@ and tabulation code. A focused `hillcontrib()` comparison attributes
 agricultural field versus natural grassland soil dissimilarity to the same
 taxonomic sets. The chapter also examines opposing Gaiellales and
 Streptosporangiales patterns within a nearly stable Actinomycetota share.
-Functional annotations remain for a later stage.
+A final chapter adds functional diversity from 17 function-level and 161
+element-level traits derived from KEGG ortholog annotations, and tests whether
+that order-level turnover changes what the community can do.
 
 ## Bookdown publication
 
@@ -22,7 +24,8 @@ numbered R Markdown chapters in the repository root, the AlberdiLab GitBook
 style in `style.css` and `_output.yml`, and rendered pages committed in `docs/`.
 The numbered chapters cover data preparation, a geographic and genomic
 overview, initial analyses with `hilldiv3`, pairwise beta diversity, and
-taxonomic power-sum shares and dissimilarity contributions.
+taxonomic power-sum shares and dissimilarity contributions, and functional
+diversity.
 
 Install R packages `bookdown`, `rmarkdown`, `knitr`, `data.table`, `ape`,
 `ggplot2`, `maps`, and `hilldiv3` 3.1.0.9000 or later. The webbook in `docs/` was
