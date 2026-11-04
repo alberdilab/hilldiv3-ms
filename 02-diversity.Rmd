@@ -59,11 +59,12 @@ alpha_diversity$order <- factor(alpha_diversity$q, levels = c(0, 1, 2),
 
 ```{r diversity_alpha_plot, fig.width=11, fig.height=7.5, fig.alt="Boxplots and sample points for neutral and phylogenetic Hill diversity at orders 0, 1, and 2 across eight habitats."}
 ggplot2::ggplot(alpha_diversity,
-                ggplot2::aes(x = value, y = habitat)) +
-  ggplot2::geom_boxplot(outlier.shape = NA, width = 0.55,
-                        fill = "#e6c7c7", colour = "#702626") +
+                ggplot2::aes(x = value, y = habitat, fill = type)) +
+  ggplot2::geom_boxplot(outlier.shape = NA, width = 0.55, alpha = 0.55,
+                        colour = "grey20") +
   ggplot2::geom_jitter(height = 0.13, width = 0, alpha = 0.28,
-                       size = 0.65, colour = "#702626") +
+                       size = 0.65, colour = "grey25") +
+  ggplot2::scale_fill_manual(values = type_colours, guide = "none") +
   ggplot2::facet_wrap(ggplot2::vars(type, order), ncol = 3,
                       scales = "free_x") +
   ggplot2::labs(x = "Hill diversity", y = NULL) +
@@ -154,8 +155,7 @@ stopifnot(nrow(profiles) == 2L * 9L * length(habitat_levels),
 ggplot2::ggplot(profiles,
                 ggplot2::aes(x = q, y = value, colour = sample)) +
   ggplot2::geom_line(linewidth = 0.7) +
-  ggplot2::scale_colour_manual(values = grDevices::hcl.colors(
-    length(habitat_levels), palette = "Dark 3")) +
+  ggplot2::scale_colour_manual(values = habitat_colours) +
   ggplot2::scale_y_log10() +
   ggplot2::facet_wrap(~ type, scales = "free_y") +
   ggplot2::labs(x = "Diversity order (q)", y = "Hill diversity (log scale)",

@@ -130,11 +130,12 @@ fd_alpha$order <- factor(fd_alpha$q, levels = c(0, 1, 2),
 ```
 
 ```{r functional_alpha_plot, fig.width=11, fig.height=7.5, fig.alt="Boxplots and sample points for neutral and functional Hill diversity at orders 0, 1, and 2 across eight habitats."}
-ggplot2::ggplot(fd_alpha, ggplot2::aes(x = value, y = habitat)) +
-  ggplot2::geom_boxplot(outlier.shape = NA, width = 0.55,
-                        fill = "#c9d8e8", colour = "#1f4e79") +
+ggplot2::ggplot(fd_alpha, ggplot2::aes(x = value, y = habitat, fill = type)) +
+  ggplot2::geom_boxplot(outlier.shape = NA, width = 0.55, alpha = 0.55,
+                        colour = "grey20") +
   ggplot2::geom_jitter(height = 0.13, width = 0, alpha = 0.28,
-                       size = 0.65, colour = "#1f4e79") +
+                       size = 0.65, colour = "grey25") +
+  ggplot2::scale_fill_manual(values = type_colours, guide = "none") +
   ggplot2::facet_wrap(ggplot2::vars(type, order), ncol = 3,
                       scales = "free_x") +
   ggplot2::labs(x = "Hill diversity", y = NULL) +
@@ -220,8 +221,7 @@ ggplot2::ggplot(tau_median,
   ggplot2::geom_point(size = 1.2) +
   ggplot2::geom_vline(xintercept = functional_tau, linetype = "dashed",
                       colour = "grey40") +
-  ggplot2::scale_colour_manual(values = grDevices::hcl.colors(
-    length(habitat_levels), palette = "Dark 3")) +
+  ggplot2::scale_colour_manual(values = habitat_colours) +
   ggplot2::scale_y_log10() +
   ggplot2::labs(x = expression("Distance threshold" ~ tau),
                 y = "Median functional Hill diversity, q = 1 (log scale)",
@@ -412,8 +412,7 @@ stopifnot(all(is.finite(fd_ord$points)))
 ggplot2::ggplot(fd_points,
                 ggplot2::aes(x = PCoA1, y = PCoA2, colour = habitat)) +
   ggplot2::geom_point(alpha = 0.75, size = 1.5) +
-  ggplot2::scale_colour_manual(values = grDevices::hcl.colors(
-    length(habitat_levels), palette = "Dark 3")) +
+  ggplot2::scale_colour_manual(values = habitat_colours) +
   ggplot2::labs(x = sprintf("PCoA 1 (%.1f%%)", fd_variance[1]),
                 y = sprintf("PCoA 2 (%.1f%%)", fd_variance[2]),
                 colour = "Habitat") +
@@ -596,9 +595,9 @@ fa_plot$type <- factor(fa_plot$type,
 ggplot2::ggplot(fa_plot, ggplot2::aes(x = share, y = type, fill = set)) +
   ggplot2::geom_col(width = 0.6, colour = "white") +
   ggplot2::scale_fill_manual(values = c(
-    Gaiellales = "#9d2f30", Streptosporangiales = "#d4846e",
-    `Remaining Actinomycetota` = "#a6a6a6",
-    `Outside Actinomycetota` = "#e6dcd0"
+    Gaiellales = "#B79F2B", Streptosporangiales = "#7A6A1F",
+    `Remaining Actinomycetota` = "#EFE7BC",
+    `Outside Actinomycetota` = "#BBBBBB"
   ), breaks = c(actino_orders, "Remaining Actinomycetota",
                 "Outside Actinomycetota")) +
   ggplot2::scale_x_continuous(labels = scales::label_percent()) +
@@ -675,7 +674,7 @@ ggplot2::ggplot(fa_elements,
   ggplot2::geom_vline(xintercept = 0, colour = "grey70") +
   ggplot2::geom_abline(slope = -1, intercept = 0, linetype = "dashed",
                        colour = "grey40") +
-  ggplot2::geom_point(colour = "#702626", alpha = 0.7, size = 1.6) +
+  ggplot2::geom_point(colour = type_colours[["Functional"]], alpha = 0.7, size = 1.6) +
   ggplot2::labs(x = "Gaiellales contribution",
                 y = "Streptosporangiales contribution") +
   ggplot2::theme_minimal(base_size = 10) +
@@ -708,8 +707,8 @@ ggplot2::ggplot(fa_top_long, ggplot2::aes(x = value, y = label)) +
                     width = 0.7) +
   ggplot2::geom_point(data = fa_top, ggplot2::aes(x = orders, y = label),
                       shape = 18, size = 3) +
-  ggplot2::scale_fill_manual(values = c(Gaiellales = "#9d2f30",
-                                        Streptosporangiales = "#d4846e")) +
+  ggplot2::scale_fill_manual(values = c(Gaiellales = "#B79F2B",
+                                        Streptosporangiales = "#7A6A1F")) +
   ggplot2::labs(x = "Contribution to field minus grassland mean completeness",
                 y = NULL, fill = NULL) +
   ggplot2::theme_minimal(base_size = 10) +

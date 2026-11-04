@@ -9,6 +9,20 @@ stopifnot(requireNamespace("ggplot2", quietly = TRUE),
           requireNamespace("maps", quietly = TRUE))
 
 habitat_levels <- unique(sample_metadata$habitat_label)
+
+# Palettes shared by every chapter and by manuscript Figure 3
+# (scripts/make-figure3.R): Okabe-Ito and Tol colours per habitat, and one
+# colour per diversity type and per phylum.
+habitat_colours <- stats::setNames(
+  c("#0072B2", "#56B4E9", "#117733", "#DDCC77",
+    "#882255", "#CC79A7", "#000000", "#999999"),
+  habitat_levels
+)
+type_colours <- c(Neutral = "#66C2A5", Phylogenetic = "#FC8D62",
+                  Functional = "#8DA0CB")
+phylum_colours <- c(Pseudomonadota = "#332288", Actinomycetota = "#DDCC77",
+                    Acidobacteriota = "#882255", Thermoproteota = "#88CCEE",
+                    Other = "#BBBBBB")
 overview_samples <- sample_metadata
 overview_samples$habitat_label <- factor(
   overview_samples$habitat_label, levels = habitat_levels
@@ -83,9 +97,10 @@ ggplot2::ggplot() +
   ) +
   ggplot2::geom_point(
     data = overview_samples,
-    ggplot2::aes(x = longitude, y = latitude),
-    colour = "#a52929", alpha = 0.72, size = 1.2
+    ggplot2::aes(x = longitude, y = latitude, colour = habitat_label),
+    alpha = 0.85, size = 1.2
   ) +
+  ggplot2::scale_colour_manual(values = habitat_colours, guide = "none") +
   ggplot2::facet_wrap(~ habitat_label, ncol = 4) +
   ggplot2::coord_quickmap(xlim = c(8, 15.5), ylim = c(54.4, 58.0), expand = FALSE) +
   ggplot2::labs(x = "Longitude (°E)", y = "Latitude (°N)") +
@@ -105,7 +120,7 @@ wastewater sites. It does not encode sampling effort in the source atlas; the
 ```{r overview_years, fig.width=9, fig.height=3.4, fig.alt="Bar chart of selected sample counts by sampling year, 2014 to 2023."}
 overview_samples$year <- format(overview_samples$date, "%Y")
 ggplot2::ggplot(overview_samples, ggplot2::aes(x = year)) +
-  ggplot2::geom_bar(fill = "#a52929", width = 0.75) +
+  ggplot2::geom_bar(fill = "#999999", width = 0.75) +
   ggplot2::labs(x = "Sampling year", y = "Samples") +
   ggplot2::theme_minimal(base_size = 11)
 ```

@@ -236,8 +236,7 @@ stopifnot(nrow(ordination) == 4L * length(sample_ids),
 ggplot2::ggplot(ordination,
                 ggplot2::aes(x = PCoA1, y = PCoA2, colour = habitat)) +
   ggplot2::geom_point(alpha = 0.75, size = 1.3) +
-  ggplot2::scale_colour_manual(values = grDevices::hcl.colors(
-    length(habitat_levels), palette = "Dark 3")) +
+  ggplot2::scale_colour_manual(values = habitat_colours) +
   ggplot2::facet_wrap(~ panel, ncol = 2, scales = "free") +
   ggplot2::labs(x = "PCoA 1", y = "PCoA 2", colour = "Habitat") +
   ggplot2::theme_minimal(base_size = 10) +
