@@ -1,5 +1,7 @@
 # hilldiv3 manuscript data
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24001411.svg)](https://doi.org/10.5281/zenodo.24001411)
+
 > **hilldiv3 is an R package for neutral, phylogenetic and functional
 > Hill-number diversity analysis.** Source code, documentation and issue
 > tracker: **[github.com/alberdilab/hilldiv3](https://github.com/alberdilab/hilldiv3)**
@@ -88,7 +90,8 @@ This repository is released under
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (see `LICENSE`), the
 same licence as the Microflora Danica data deposit it derives from. Cite the
 release through `CITATION.cff` (GitHub's "Cite this repository") together with
-the Microflora Danica study and deposit above.
+the Microflora Danica study and deposit above. The archived releases are on Zenodo under the concept DOI
+[10.5281/zenodo.24001411](https://doi.org/10.5281/zenodo.24001411), which always resolves to the latest version.
 
 ## Rebuild and check
 
