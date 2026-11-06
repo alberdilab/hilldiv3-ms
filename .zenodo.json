@@ -1,0 +1,13 @@
+{
+  "title": "hilldiv3 manuscript: Microflora Danica worked example (data and webbook)",
+  "upload_type": "software",
+  "description": "Data, analysis code and rendered webbook for the Microflora Danica worked example in the hilldiv3 manuscript: a genome-by-sample abundance table for 5,518 representative MAGs across 360 samples, sample and genome metadata, a phylogenetic tree, KEGG-derived functional traits, and R Markdown chapters that run neutral, phylogenetic and functional Hill-number analyses with hilldiv3. Source data derive from the Microflora Danica deposit (https://doi.org/10.5281/zenodo.17162544).",
+  "creators": [{"name": "Alberdi, Antton", "affiliation": "University of Copenhagen"}],
+  "license": "cc-by-4.0",
+  "keywords": ["Hill numbers", "diversity partitioning", "metagenomics", "functional diversity", "phylogenetic diversity", "R package"],
+  "related_identifiers": [
+    {"relation": "isSupplementTo", "identifier": "https://github.com/alberdilab/hilldiv3", "resource_type": "software", "scheme": "url"},
+    {"relation": "isDerivedFrom", "identifier": "10.5281/zenodo.17162544", "scheme": "doi"},
+    {"relation": "isDocumentedBy", "identifier": "https://alberdilab.github.io/hilldiv3-ms/", "scheme": "url"}
+  ]
+}

@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this repository, please cite it together with the Microflora Danica study and data deposit."
+title: "hilldiv3 manuscript: Microflora Danica worked example (data and webbook)"
+version: v1.0.0
+date-released: "2026-11-06"
+license: CC-BY-4.0
+repository-code: "https://github.com/alberdilab/hilldiv3-ms"
+url: "https://alberdilab.github.io/hilldiv3-ms/"
+authors:
+  - family-names: Alberdi
+    given-names: Antton
+    affiliation: "University of Copenhagen"

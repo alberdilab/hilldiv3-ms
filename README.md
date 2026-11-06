@@ -90,6 +90,14 @@ from the MFD companion repository at commit
 The source tree includes other reference genomes; this repository removes
 their tips and keeps the MFD representatives.
 
+## Licence and citation
+
+This repository is released under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) (see `LICENSE`), the
+same licence as the Microflora Danica data deposit it derives from. Cite the
+release through `CITATION.cff` (GitHub's "Cite this repository") together with
+the Microflora Danica study and deposit above.
+
 ## Rebuild and check
 
 The committed data are ready to use. To rebuild them from the pinned public
