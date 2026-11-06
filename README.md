@@ -1,5 +1,11 @@
 # hilldiv3 manuscript data
 
+> **hilldiv3 is an R package for neutral, phylogenetic and functional
+> Hill-number diversity analysis.** Source code, documentation and issue
+> tracker: **[github.com/alberdilab/hilldiv3](https://github.com/alberdilab/hilldiv3)**
+> · Package website: [alberdilab.github.io/hilldiv3](https://alberdilab.github.io/hilldiv3/)
+> · This webbook: [alberdilab.github.io/hilldiv3-ms](https://alberdilab.github.io/hilldiv3-ms/)
+
 This repository stages the Microflora Danica data panel for a worked example in
 the **hilldiv3** manuscript. It contains a genome by sample abundance table,
 sample and genome metadata, and a phylogenetic tree on the same 5,518 genomes.
