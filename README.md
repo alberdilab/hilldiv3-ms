@@ -17,13 +17,10 @@ that order-level turnover changes what the community can do.
 
 ## Bookdown publication
 
-This repository follows the manuscript webbook format used by
-[`invasion_hologenomics`](https://github.com/alberdilab/invasion_hologenomics)
-and [`calotriton_metagenomics`](https://github.com/alberdilab/calotriton_metagenomics):
-numbered R Markdown chapters in the repository root, the AlberdiLab GitBook
-style in `style.css` and `_output.yml`, and rendered pages committed in `docs/`.
-The numbered chapters cover data preparation, a geographic and genomic
-overview, initial analyses with `hilldiv3`, pairwise beta diversity, and
+The webbook is built from numbered R Markdown chapters in the repository root,
+styled with the AlberdiLab GitBook theme in `style.css` and `_output.yml`, and
+rendered into `docs/`. The chapters cover data preparation, a geographic and
+genomic overview, initial analyses with `hilldiv3`, pairwise beta diversity,
 taxonomic power-sum shares and dissimilarity contributions, and functional
 diversity.
 
