@@ -51,7 +51,7 @@ library(knitr)
 library(ggplot2)
 library(maps)
 library(hilldiv3)
-stopifnot(utils::packageVersion("hilldiv3") >= "3.1.0.9000")
+stopifnot(utils::packageVersion("hilldiv3") >= "3.2.0")
 ```
 
 ## Analysis steps

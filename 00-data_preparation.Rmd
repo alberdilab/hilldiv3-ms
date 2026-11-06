@@ -1,9 +1,7 @@
 # Data preparation {#data-preparation}
 
 The staged panel contains 360 geographically dispersed Microflora Danica
-samples: 45 from each of eight habitat classes. It uses the same locked sample
-and representative genome selections as the
-[gifter case study](https://github.com/alberdilab/gifter/tree/f04f7de0691c29874f7fbe17b915990b832e2a4d/manuscript/analysis/r10-mfd).
+samples: 45 from each of eight habitat classes.
 
 ## Input data
 
@@ -87,13 +85,6 @@ The [Microflora Danica data deposit](https://doi.org/10.5281/zenodo.17162544)
 provides `Nitrifiers.tar.gz`, including the published MAG metadata and Sylph
 abundance table. Please cite both the study and deposit when using these data,
 and consult the deposit for its reuse terms.
-
-The sample and representative tables are copies of the locked panels at
-[`gifter` commit `f04f7de`](https://github.com/alberdilab/gifter/tree/f04f7de0691c29874f7fbe17b915990b832e2a4d/manuscript/analysis/r10-mfd).
-The source tree is
-[`gtdb-shallow.tree`](https://github.com/cmc-aau/mfd_sr_mags/blob/957591d4104462ec6e52ab58d85a69798057e582/analysis/datasets/gtdb-shallow.tree)
-from the MFD companion repository at commit `957591d`. Tips outside the
-representative panel were removed.
 
 ## Rebuild and verify
 

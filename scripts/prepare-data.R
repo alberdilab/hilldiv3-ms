@@ -35,7 +35,7 @@ if (nrow(samples) != 360L || nrow(reps) != 5518L ||
     anyDuplicated(samples$abundance_column) ||
     anyDuplicated(reps$genome_id) ||
     anyDuplicated(reps$secondary_cluster)) {
-  stop("The locked sample or representative panel is invalid")
+  stop("The sample or representative metadata table is invalid")
 }
 
 mags <- data.table::fread(
@@ -43,7 +43,7 @@ mags <- data.table::fread(
 )
 if (nrow(mags) != 19253L || anyDuplicated(mags$bin) ||
     !setequal(reps$genome_id, intersect(reps$genome_id, mags$bin))) {
-  stop("The MAG metadata differs from the locked panel")
+  stop("The MAG metadata does not match the representative metadata table")
 }
 
 profiles <- data.table::fread(

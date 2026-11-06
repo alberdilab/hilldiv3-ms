@@ -25,9 +25,10 @@ taxonomic power-sum shares and dissimilarity contributions, and functional
 diversity.
 
 Install R packages `bookdown`, `rmarkdown`, `knitr`, `data.table`, `ape`,
-`ggplot2`, `maps`, and `hilldiv3` 3.1.0.9000 or later. The webbook in `docs/` was
-rendered with `hilldiv3` 3.1.0.9000 from source commit `263360c`. With an adjacent
-checkout of that source, install it using `R CMD INSTALL ../hilldiv3`.
+`ggplot2`, `maps`, and `hilldiv3` 3.2.0 or later. The webbook in `docs/` was
+rendered with `hilldiv3` 3.2.0 (source commit `3f2f98f`). Install it from
+CRAN with `install.packages("hilldiv3")`, or from source with
+`devtools::install_github("alberdilab/hilldiv3")`.
 To render the webbook from the repository root, run:
 
 ```sh
@@ -50,8 +51,7 @@ serves `docs/` from `main` at
 | `data/representative_metadata.tsv` | One row per 95% ANI species representative, in abundance-row order, including cluster, taxonomy, and genome-quality fields. |
 | `data/representative_tree.nwk` | Newick tree pruned to exactly those 5,518 `genome_id` tips, with source branch lengths retained. |
 
-The 360 samples are the geographically dispersed panel locked for the
-[gifter Microflora Danica case study](https://github.com/alberdilab/gifter/tree/f04f7de0691c29874f7fbe17b915990b832e2a4d/manuscript/analysis/r10-mfd):
+The 360 samples are a geographically dispersed panel of
 45 samples in each of eight habitat classes (agricultural field, natural
 grassland, natural forest, urban greenspace, bog or fen soils; natural
 freshwater and saltwater sediments; urban wastewater).
@@ -75,17 +75,6 @@ provides `Nitrifiers.tar.gz` (MD5
 `9b65d9984cb41a929613758919ed2fcf`), which contains the published MAG
 metadata and Sylph abundance table used here. Please cite both the study and
 the deposit when using these data, and consult the deposit for its reuse terms.
-
-The representative and sample tables are byte-for-byte copies of the locked
-panels in [gifter commit
-`f04f7de`](https://github.com/alberdilab/gifter/tree/f04f7de0691c29874f7fbe17b915990b832e2a4d/manuscript/analysis/r10-mfd).
-The source tree is
-[`gtdb-shallow.tree`](https://github.com/cmc-aau/mfd_sr_mags/blob/957591d4104462ec6e52ab58d85a69798057e582/analysis/datasets/gtdb-shallow.tree)
-from the MFD companion repository at commit
-`957591d4104462ec6e52ab58d85a69798057e582` (SHA-256
-`693976bea56093394704861c8229a26305a6aec21d8f60fde9debedc89acc112`).
-The source tree includes other reference genomes; this repository removes
-their tips and keeps the MFD representatives.
 
 ## Licence and citation
 

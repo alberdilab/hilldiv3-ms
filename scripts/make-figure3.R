@@ -15,7 +15,7 @@ suppressMessages({
   library(ggplot2)
   library(svglite)
 })
-stopifnot(utils::packageVersion("hilldiv3") >= "3.1.0.9000")
+stopifnot(utils::packageVersion("hilldiv3") >= "3.2.0")
 
 # ---- paths (project-relative) ----------------------------------------------
 args <- commandArgs(trailingOnly = FALSE)
